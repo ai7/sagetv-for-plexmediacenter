@@ -1,5 +1,5 @@
 #
-# Copyright (c) 2010 Plex Development Team. All rights reserved.
+# PiX64 - initial code
 #
 import re, os, os.path
 import Media, VideoFiles, Stack, Utils
