@@ -1,8 +1,13 @@
+# PiX64 (mreid) initial code
+#
+# lehibri (bschneider)
+#  continued development
+#
 import re, time, unicodedata, hashlib, types, urllib, simplejson as json
 from time import strftime
 from datetime import date
 
-SAGEX_HOST = 'http://192.168.1.110:8500'
+SAGEX_HOST = 'http://x.x.x.x:port'
 
 def Start():
   HTTP.CacheTime = CACHE_1HOUR * 24 
