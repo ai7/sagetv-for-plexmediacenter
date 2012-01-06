@@ -62,31 +62,43 @@ def isFileInSageTVDB(filename):
   
 def readPropertiesFromPropertiesFile():
 	global SAGEX_HOST, UNC_MAPPINGS
-	cwd = os.getcwd()
-	Log.Debug('***cwdddddddddddd=%s' % cwd)
-	cwd = cwd.replace("\\\\?\\", "")
-	cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagent", "Plug-ins\\BMTAgent.bundle\\Contents\\Code\\")
-	propertiesFilePath = cwd + "BMTAgent.properties"
-	Log.Debug('***propertiesFilePath=%s' % propertiesFilePath)
-	if(os.path.isfile(propertiesFilePath)):
-		f = os.open(propertiesFilePath, os.O_RDONLY)
-	# Read all input from the properties file
-	fileInput = ""
-	c = os.read(f, 1)
-	while c != "":
-		fileInput = fileInput + c
+	try:
+		cwd = os.getcwd()
+		Log.Debug('***cwdddddddddddd=%s' % cwd)
+		if(cwd.find("\\") >=0): #backslashes are typically from windows machines
+			cwd = cwd.replace("\\\\?\\", "")
+			cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagent", "Plug-ins\\BMTAgent.bundle\\Contents\\Code\\")
+		elif(cwd.find("/") >=0): #forward slashes are typically from non-windows machines
+			#/Users/michaelreid/Library/Application Support/Plex Media Server/Plug-in Support/Data/com.plexapp.agents.bmtagent
+			cwd = cwd.replace("Plug-in Support/Data/com.plexapp.agents.bmtagent", "Plug-ins/BMTAgent.bundle/Contents/Code/")
+
+		propertiesFilePath = cwd + "BMTAgent.properties"
+		Log.Debug('***propertiesFilePath=%s' % propertiesFilePath)
+		if(os.path.isfile(propertiesFilePath)):
+			f = os.open(propertiesFilePath, os.O_RDONLY)
+		else:
+			return False
+		# Read all input from the properties file
+		fileInput = ""
 		c = os.read(f, 1)
-	
-	lines = fileInput.split('\n')
-	for keyValuePair in lines:
-		keyValues = keyValuePair.split('=')
-		Log.Debug('***Properties file key=%s; value=%s' % (keyValues[0], keyValues[1]))
-		if(keyValues[0] == "SAGEX_HOST"):
-			SAGEX_HOST = keyValues[1]
-		elif(keyValues[0] == "UNC_MAPPINGS"):
-			UNC_MAPPINGS = keyValues[1]
+		while c != "":
+			fileInput = fileInput + c
+			c = os.read(f, 1)
+		
+		lines = fileInput.split('\n')
+		for keyValuePair in lines:
+			keyValues = keyValuePair.split('=')
+			Log.Debug('***Properties file key=%s; value=%s' % (keyValues[0], keyValues[1]))
+			if(keyValues[0] == "SAGEX_HOST"):
+				SAGEX_HOST = keyValues[1]
+			elif(keyValues[0] == "UNC_MAPPINGS"):
+				UNC_MAPPINGS = keyValues[1]
+		
+	except:
+		return False
 	
 	os.close(f)
+	return True
   
 class BMTAgent(Agent.TV_Shows):
   name = 'SageTV BMT Agent'
@@ -98,7 +110,8 @@ class BMTAgent(Agent.TV_Shows):
 		
   def search(self, results, media, lang, manual):
 	#filename = media.items[0].parts[0].file.decode('utf-8')
-	readPropertiesFromPropertiesFile()
+	if(not readPropertiesFromPropertiesFile()):
+		Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
 	
 	quotedFilename = media.filename
 	if(UNC_MAPPINGS == ""):
