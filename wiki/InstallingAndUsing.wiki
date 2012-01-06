@@ -1,0 +1,55 @@
+<wiki:toc max_depth="2" />
+= SageTV for Plex Media Server (and Roku Too!) =
+
+== Requirements ==
+*Media Server (PMS) 0.9.5 or newer installed on one computer:*
+  * Linux: [http:// download] [http:// installation instructions]
+  * OS X: [http:// download] [http:// installation instructions]
+  * Windows: [http:// download] [http:// installation instructions]
+
+*SageTV server software* 
+  * v7.1.9 installed (no longer available for download)
+*SageTV sagex-services plugin*
+  * installed (this will also install the Jetty Web Server if it's not already installed) 
+*SageTV Customer Scanner (for Plex Media Server)*
+*SageTV BMT Agent (for Plex Media Server)*
+
+== Optional == 
+* Roku Box with Plex Channel installed*
+
+== Introduction==
+
+This document will not cover specific steps on how to install the SageTV Server or the Plex Media Server. It is also assumed that the user is somewhat familiar with the Plex Media Manager (browser-based access to the Plex media library / database).
+
+== Installation ==
+=== Installing sagex-services plugin for SageTV Server ===
+
+[http://code.google.com/p/customsagetv/wiki/SageTVapi sagex-services] is SageTV plugin that allows remote access to the SageTV API for developers that wish to access various aspects of the SageTV server. This plug-in must be installed on your SageTV server.
+
+  # Open SageTV Placeshifter, turn on an Extender or open the SageTV UI on the server 
+  # Go to the SageTV Plugin Manager by following the menus to Setup -> SageTV Plugins -> All Available Plugins
+  # From the General tab, scroll to "sagex-services - SageTV Remote API Services" and select it.
+  # Install the plugin, and restart SageTV server when prompted. *Note: this will also install the Jetty Web Server.*
+Optional: configure the user name, password, and port for the Jetty Web Server (by default, they are respectively: sage frey and 8080)
+  # Open SageTV Placeshifter, turn on an Extender or open the SageTV UI on the server 
+  # Go to the SageTV Plugin Manager by following the menus to Setup -> SageTV Plugins -> Installed Plugins
+  # From the General tab, scroll to the Jetty Web Server plugin and select it. An options dialog is displayed
+  # Choose Configure Plugin. A screen with the plugin's configuration settings is displayed
+  # Update the user name, password, and port as you like. Be sure to select "Restart Web Server" when you're done. *Please note: SSL connections are not currently supported in  the SageTV for Boxee app*
+  # Make a note of the user name, password and port since these will be used to configure the SageTV for Boxee app
+Note: the Jetty Web Server is installed as a part of installing the sagex-services plugin but will not be used by Plex Media Server. See: [http://tools.assembla.com/sageplugins/wiki/Jetty Jetty Web Server plugin wiki] for complete information.
+
+=== Installing the SageTV Custom Scanner for Plex Media Manager ===
+
+The SageTV Custom Scanner will take care of the following tasks as part of identifying SageTV recordings:
+  # Scans the SageTV recording directories (as added to the Plex Media Manager by the user)
+  # Creates the appropriate PMS objects ("Movie" or "TV Show")
+  # Updates the metadata stored in the Plex Media Manager based on the filename only
+  # Passes the PMS object back to PMS for further processing (e.g. SageTV BMT Agent)
+
+General information on [http://forums.plexapp.com/index.php/topic/19396-how-to-install-a-custom-scanner/ installing a custom scanner] (from the Plex forums).
+
+=== Installing the SageTV BMT Agent for Plex Media Manager ===
+
+This Agent is the second of YYY parts that enables the Plex Media Server to query the SageTV database and insert the metadata of SageTV recordings into the Plex database.
+
