@@ -1,13 +1,9 @@
-# PiX64 (mreid) initial code
-#
-# lehibri (bschneider)
-#  continued development
-#
-import re, time, unicodedata, hashlib, types, urllib, simplejson as json
+import re, time, unicodedata, hashlib, types, urllib, os, simplejson as json
 from time import strftime
 from datetime import date
 
-SAGEX_HOST = 'http://x.x.x.x:port'
+SAGEX_HOST = ""
+UNC_MAPPINGS = ""
 
 def Start():
   HTTP.CacheTime = CACHE_1HOUR * 24 
@@ -62,7 +58,35 @@ def getSageTVMediafileObject(filename):
   
 def isFileInSageTVDB(filename):
 	url = SAGEX_HOST + '/sagex/api?c=IsFilePath&1=%s&encoder=json' % urllib.pathname2url(filename) 
-	return executeSagexAPICall(url, 'Result')
+	return bool(executeSagexAPICall(url, 'Result'))
+  
+def readPropertiesFromPropertiesFile():
+	global SAGEX_HOST, UNC_MAPPINGS
+	cwd = os.getcwd()
+	Log.Debug('***cwdddddddddddd=%s' % cwd)
+	cwd = cwd.replace("\\\\?\\", "")
+	cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagent", "Plug-ins\\BMTAgent.bundle\\Contents\\Code\\")
+	propertiesFilePath = cwd + "BMTAgent.properties"
+	Log.Debug('***propertiesFilePath=%s' % propertiesFilePath)
+	if(os.path.isfile(propertiesFilePath)):
+		f = os.open(propertiesFilePath, os.O_RDONLY)
+	# Read all input from the properties file
+	fileInput = ""
+	c = os.read(f, 1)
+	while c != "":
+		fileInput = fileInput + c
+		c = os.read(f, 1)
+	
+	lines = fileInput.split('\n')
+	for keyValuePair in lines:
+		keyValues = keyValuePair.split('=')
+		Log.Debug('***Properties file key=%s; value=%s' % (keyValues[0], keyValues[1]))
+		if(keyValues[0] == "SAGEX_HOST"):
+			SAGEX_HOST = keyValues[1]
+		elif(keyValues[0] == "UNC_MAPPINGS"):
+			UNC_MAPPINGS = keyValues[1]
+	
+	os.close(f)
   
 class BMTAgent(Agent.TV_Shows):
   name = 'SageTV BMT Agent'
@@ -74,11 +98,22 @@ class BMTAgent(Agent.TV_Shows):
 		
   def search(self, results, media, lang, manual):
 	#filename = media.items[0].parts[0].file.decode('utf-8')
-	quotedFilename = media.filename
-	Log.Debug('***quotedFilename=%s' % quotedFilename)
-	unquotedFilename = urllib.unquote(quotedFilename)
-	Log.Debug('***unquotedFilename=%s' % unquotedFilename)
+	readPropertiesFromPropertiesFile()
 	
+	quotedFilename = media.filename
+	if(UNC_MAPPINGS == ""):
+		unquotedFilename = urllib.unquote(quotedFilename)
+	else:
+		#Map the path from Plex (which only does drive letters) to what could be a network share location that Sage uses
+		maps = UNC_MAPPINGS.split(';')
+		for mapValues in maps:
+			map = mapValues.split(',')
+			unquotedFilename = urllib.unquote(quotedFilename)
+			unquotedFilename = unquotedFilename.replace(map[0],map[1])
+			quotedFilename = urllib.quote(unquotedFilename)
+	
+	Log.Debug('***quotedFilename=%s' % quotedFilename)
+	Log.Debug('***unquotedFilename=%s' % unquotedFilename)
 	fileExists = isFileInSageTVDB(unquotedFilename)
 	
 	if(fileExists):
@@ -93,6 +128,8 @@ class BMTAgent(Agent.TV_Shows):
 				startTime = float(show.get('OriginalAiringDate') // 1000)
 				airDate = date.fromtimestamp(startTime)
 				results.Append(MetadataSearchResult(id=quotedFilename, name=unquotedFilename, score=100, lang=lang, year=airDate.year))
+			else:
+				Log.Debug('***Movies/Movies/Film found, ignoring and will not call update; categorylist=%s' % category)
 
   def update(self, metadata, media, lang, force):
 	Log.Debug('***UPDATE CALLEDDDDDDDDDDDDDDDDDDDDDDDD')
@@ -125,8 +162,9 @@ class BMTAgent(Agent.TV_Shows):
 	startTime = float(show.get('OriginalAiringDate') // 1000)
 	airDate = date.fromtimestamp(startTime)
 
-	episode.title = show.get('ShowEpisode')
-	if(episode.title == ""):
+	if(show.get('ShowEpisode') == ""):
+		episode.title = show.get('ShowEpisode')
+	else:
 		episode.title = show.get('ShowTitle')
 	episode.summary = show.get('ShowDescription')
 	episode.originally_available_at = airDate
@@ -138,4 +176,6 @@ class BMTAgent(Agent.TV_Shows):
 	#episode.producers = 
 	#episode.rating = 
 	#episode.genres = show.get('ShowCategoriesString')
+	
+	Log.Debug("Metadata that was set includes: episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;" % (episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season))
 
