@@ -53,11 +53,11 @@ def getShowSeriesInfo(showID):
 		return None
   
 def getSageTVMediafileObject(filename):
-	url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForFilePath&1=%s&encoder=json' % urllib.pathname2url(filename) 
+	url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForFilePath&1=%s&encoder=json' % filename
 	return executeSagexAPICall(url, 'MediaFile')
   
 def isFileInSageTVDB(filename):
-	url = SAGEX_HOST + '/sagex/api?c=IsFilePath&1=%s&encoder=json' % urllib.pathname2url(filename) 
+	url = SAGEX_HOST + '/sagex/api?c=IsFilePath&1=%s&encoder=json' % filename
 	return bool(executeSagexAPICall(url, 'Result'))
   
 def readPropertiesFromPropertiesFile():
@@ -104,6 +104,7 @@ class BMTAgent(Agent.TV_Shows):
   name = 'SageTV BMT Agent'
   languages = [Locale.Language.English]
   primary_provider = True
+  accepts_from = None
   #fallback_agent = False
   #accepts_from = 'com.plexapp.agents.thetvdb'
   #contributes_to = ['com.plexapp.agents.thetvdb']
@@ -176,19 +177,20 @@ class BMTAgent(Agent.TV_Shows):
 	airDate = date.fromtimestamp(startTime)
 
 	if(show.get('ShowEpisode') == ""):
-		episode.title = show.get('ShowEpisode')
-	else:
 		episode.title = show.get('ShowTitle')
+	else:
+		episode.title = show.get('ShowEpisode')   
 	episode.summary = show.get('ShowDescription')
 	episode.originally_available_at = airDate
 	episode.duration = mf.get('FileDuration')
-	episode.season = show.get('ShowSeasonNumber')
+	episode.season = int(s)
 	episode.guest_stars = show.get('PeopleListInShow')
+	episode.show = show.get('ShowTitle')
 	#episode.writers = 
 	#episode.directors = 
 	#episode.producers = 
 	#episode.rating = 
 	#episode.genres = show.get('ShowCategoriesString')
 	
-	Log.Debug("Metadata that was set includes: episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;" % (episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season))
+	Log.Debug("Metadata that was set includes: episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;episode.show=%s;" % (episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, episode.show))
 
