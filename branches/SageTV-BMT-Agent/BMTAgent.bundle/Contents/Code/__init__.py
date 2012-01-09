@@ -3,6 +3,7 @@ from time import strftime
 from datetime import date
 
 SAGEX_HOST = ""
+PLEX_HOST = ""
 UNC_MAPPINGS = ""
 
 def Start():
@@ -61,7 +62,7 @@ def isFileInSageTVDB(filename):
 	return bool(executeSagexAPICall(url, 'Result'))
   
 def readPropertiesFromPropertiesFile():
-	global SAGEX_HOST, UNC_MAPPINGS
+	global SAGEX_HOST, PLEX_HOST, UNC_MAPPINGS
 	try:
 		cwd = os.getcwd()
 		Log.Debug('***cwdddddddddddd=%s' % cwd)
@@ -91,6 +92,8 @@ def readPropertiesFromPropertiesFile():
 			Log.Debug('***Properties file key=%s; value=%s' % (keyValues[0], keyValues[1]))
 			if(keyValues[0] == "SAGEX_HOST"):
 				SAGEX_HOST = keyValues[1]
+			elif(keyValues[0] == "PLEX_HOST"):
+				PLEX_HOST = keyValues[1]
 			elif(keyValues[0] == "UNC_MAPPINGS"):
 				UNC_MAPPINGS = keyValues[1]
 		
@@ -98,6 +101,21 @@ def readPropertiesFromPropertiesFile():
 		return False
 	
 	os.close(f)
+	return True
+  
+def setWatchedUnwatchedFlag(id, isWatched):
+	Log.Debug('*** setWatchedUnwatchedFlagsetWatchedUnwatchedFlag: id=%s;isWatched=%s' % (id, str(isWatched)))
+	if(isWatched):
+		# If sage says it's watched, set it as watched in Plex
+		url = PLEX_HOST + '/:/scrobble?key=%s&identifier=com.plexapp.plugins.library' % id
+	else:
+		url = PLEX_HOST + '/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library' % id
+	Log.Debug('*** PLEX request URL: %s' % url)
+	try:
+		input = urllib.urlopen(url)
+	except IOError, i:
+		Log.Debug("ERROR in setWatchedUnwatchedFlag: Unable to connect to PMS server")
+		return False
 	return True
   
 class BMTAgent(Agent.TV_Shows):
@@ -179,13 +197,15 @@ class BMTAgent(Agent.TV_Shows):
 	if(show.get('ShowEpisode') == ""):
 		episode.title = show.get('ShowTitle')
 	else:
-		episode.title = show.get('ShowEpisode')   
+		episode.title = show.get('ShowEpisode')
 	episode.summary = show.get('ShowDescription')
 	episode.originally_available_at = airDate
 	episode.duration = mf.get('FileDuration')
 	episode.season = int(s)
 	episode.guest_stars = show.get('PeopleListInShow')
 	episode.show = show.get('ShowTitle')
+	
+	setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
 	#episode.writers = 
 	#episode.directors = 
 	#episode.producers = 
