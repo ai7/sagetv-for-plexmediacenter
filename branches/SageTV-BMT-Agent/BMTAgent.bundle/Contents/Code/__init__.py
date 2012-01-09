@@ -53,7 +53,11 @@ def getShowSeriesInfo(showID):
 	else:
 		return None
   
-def getSageTVMediafileObject(filename):
+def getMediaFileForID(mediaFileID):
+	url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForID&1=%s&encoder=json' % mediaFileID
+	return executeSagexAPICall(url, 'MediaFile')
+  
+def getMediaFileForFilePath(filename):
 	url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForFilePath&1=%s&encoder=json' % filename
 	return executeSagexAPICall(url, 'MediaFile')
   
@@ -149,7 +153,7 @@ class BMTAgent(Agent.TV_Shows):
 	fileExists = isFileInSageTVDB(unquotedFilename)
 	
 	if(fileExists):
-		mf = getSageTVMediafileObject(unquotedFilename)
+		mf = getMediaFileForFilePath(unquotedFilename)
 		if(mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
 			airing = mf.get('Airing')
 			show = airing.get('Show')
@@ -159,15 +163,14 @@ class BMTAgent(Agent.TV_Shows):
 			if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
 				startTime = float(show.get('OriginalAiringDate') // 1000)
 				airDate = date.fromtimestamp(startTime)
-				results.Append(MetadataSearchResult(id=quotedFilename, name=unquotedFilename, score=100, lang=lang, year=airDate.year))
+				results.Append(MetadataSearchResult(id=str(mf.get('MediaFileID')), name=unquotedFilename, score=100, lang=lang, year=airDate.year))
 			else:
 				Log.Debug('***Movies/Movies/Film found, ignoring and will not call update; categorylist=%s' % category)
 
   def update(self, metadata, media, lang, force):
 	Log.Debug('***UPDATE CALLEDDDDDDDDDDDDDDDDDDDDDDDD')
-	#filename = media.items[0].parts[0].file.decode('utf-8')
-	filename = urllib.unquote(metadata.id)
-	mf = getSageTVMediafileObject(filename)
+	mediaFileID = str(metadata.id)
+	mf = getMediaFileForID(mediaFileID)
 	airing = mf.get('Airing')
 	show = airing.get('Show')
 	
@@ -205,7 +208,8 @@ class BMTAgent(Agent.TV_Shows):
 	episode.guest_stars = show.get('PeopleListInShow')
 	episode.show = show.get('ShowTitle')
 	
-	setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
+	#Log.Debug('*** callingggggggg: id=%s' % metadata.seasons[s].episodes[e])
+	#setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
 	#episode.writers = 
 	#episode.directors = 
 	#episode.producers = 
