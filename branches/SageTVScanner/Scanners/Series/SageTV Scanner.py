@@ -17,7 +17,7 @@ from mp4file import mp4file, atomsearch
 #  SageTV files are formated as show-episode-randomnumbers.txt and can in some cases include SxxExx
 #  information.
 #-------------------
-sage_regex = '(?P<show>.*?)-(?P<episode>.*?)-'
+sage_regex = '(?P<show>.*?)-*?-?(?P<episode>.*?)-'
 
 # Look for episodes.
 def Scan(path, files, mediaList, subdirs):
