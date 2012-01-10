@@ -70,7 +70,6 @@ def readPropertiesFromPropertiesFile():
 			cwd = cwd.replace("\\\\?\\", "")
 			cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagent", "Plug-ins\\BMTAgent.bundle\\Contents\\Code\\")
 		elif(cwd.find("/") >=0): #forward slashes are typically from non-windows machines
-			#/Users/michaelreid/Library/Application Support/Plex Media Server/Plug-in Support/Data/com.plexapp.agents.bmtagent
 			cwd = cwd.replace("Plug-in Support/Data/com.plexapp.agents.bmtagent", "Plug-ins/BMTAgent.bundle/Contents/Code/")
 
 		propertiesFilePath = cwd + "BMTAgent.properties"
@@ -144,10 +143,10 @@ class BMTAgent(Agent.TV_Shows):
 	quotedFilepathAndName = media.filename
 	unquotedFilepathAndName = urllib.unquote(quotedFilepathAndName)
 	# Pull out just the filename to use
-	if(unquotedFilepathAndName.find("\\")>0):
-		unquotedFilename = unquotedFilepathAndName[unquotedFilepathAndName.rfind("\\")+1:len(unquotedFilepathAndName)]
-	else:
+	if(unquotedFilepathAndName.find("\\")<0):
 		unquotedFilename = unquotedFilepathAndName[unquotedFilepathAndName.rfind("//")+1:len(unquotedFilepathAndName)]
+	else:
+		unquotedFilename = unquotedFilepathAndName[unquotedFilepathAndName.rfind("\\")+1:len(unquotedFilepathAndName)]
 	Log.Debug('****unquotedFilepathAndName=%s' % unquotedFilepathAndName)
 	Log.Debug('****unquotedFilename=%s' % unquotedFilename)
 	mf = getMediaFileForFilePath(unquotedFilename)
