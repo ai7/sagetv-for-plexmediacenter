@@ -4,7 +4,6 @@ from datetime import date
 
 SAGEX_HOST = ""
 PLEX_HOST = ""
-UNC_MAPPINGS = ""
 
 def Start():
   HTTP.CacheTime = CACHE_1HOUR * 24 
@@ -58,15 +57,12 @@ def getMediaFileForID(mediaFileID):
 	return executeSagexAPICall(url, 'MediaFile')
   
 def getMediaFileForFilePath(filename):
-	url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForFilePath&1=%s&encoder=json' % filename
+	#url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForFilePath&1=%s&encoder=json' % filename
+	url = SAGEX_HOST + '/sagex/api?c=plex:GetMediaFileForName&1=%s&encoder=json' % filename
 	return executeSagexAPICall(url, 'MediaFile')
   
-def isFileInSageTVDB(filename):
-	url = SAGEX_HOST + '/sagex/api?c=IsFilePath&1=%s&encoder=json' % filename
-	return bool(executeSagexAPICall(url, 'Result'))
-  
 def readPropertiesFromPropertiesFile():
-	global SAGEX_HOST, PLEX_HOST, UNC_MAPPINGS
+	global SAGEX_HOST, PLEX_HOST
 	try:
 		cwd = os.getcwd()
 		Log.Debug('***cwdddddddddddd=%s' % cwd)
@@ -98,8 +94,6 @@ def readPropertiesFromPropertiesFile():
 				SAGEX_HOST = keyValues[1]
 			elif(keyValues[0] == "PLEX_HOST"):
 				PLEX_HOST = keyValues[1]
-			elif(keyValues[0] == "UNC_MAPPINGS"):
-				UNC_MAPPINGS = keyValues[1]
 		
 	except:
 		return False
@@ -147,24 +141,29 @@ class BMTAgent(Agent.TV_Shows):
 	if(not readPropertiesFromPropertiesFile()):
 		Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
 	
-	quotedFilename = media.filename
-	unquotedFilename = urllib.unquote(quotedFilename)
-	fileExists = isFileInSageTVDB(unquotedFilename)
+	quotedFilepathAndName = media.filename
+	unquotedFilepathAndName = urllib.unquote(quotedFilepathAndName)
+	# Pull out just the filename to use
+	if(unquotedFilepathAndName.find("\\")>0):
+		unquotedFilename = unquotedFilepathAndName[unquotedFilepathAndName.rfind("\\")+1:len(unquotedFilepathAndName)]
+	else:
+		unquotedFilename = unquotedFilepathAndName[unquotedFilepathAndName.rfind("//")+1:len(unquotedFilepathAndName)]
+	Log.Debug('****unquotedFilepathAndName=%s' % unquotedFilepathAndName)
+	Log.Debug('****unquotedFilename=%s' % unquotedFilename)
+	mf = getMediaFileForFilePath(unquotedFilename)
 	
-	if(fileExists):
-		mf = getMediaFileForFilePath(unquotedFilename)
-		if(mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
-			airing = mf.get('Airing')
-			show = airing.get('Show')
-			
-			# Check if the Sage recording is a movie or film; if it is, ignore it (workaround for user is to move movies out to a separate import directory that Plex can read an import as Movie content vs. TV Show content
-			category = show.get('ShowCategoriesString')
-			if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
-				startTime = float(show.get('OriginalAiringDate') // 1000)
-				airDate = date.fromtimestamp(startTime)
-				results.Append(MetadataSearchResult(id=str(mf.get('MediaFileID')), name=unquotedFilename, score=100, lang=lang, year=airDate.year))
-			else:
-				Log.Debug('***Movies/Movies/Film found, ignoring and will not call update; categorylist=%s' % category)
+	if(mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
+		airing = mf.get('Airing')
+		show = airing.get('Show')
+		
+		# Check if the Sage recording is a movie or film; if it is, ignore it (workaround for user is to move movies out to a separate import directory that Plex can read an import as Movie content vs. TV Show content
+		category = show.get('ShowCategoriesString')
+		if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
+			startTime = float(show.get('OriginalAiringDate') // 1000)
+			airDate = date.fromtimestamp(startTime)
+			results.Append(MetadataSearchResult(id=str(mf.get('MediaFileID')), name=unquotedFilepathAndName, score=100, lang=lang, year=airDate.year))
+		else:
+			Log.Debug('***Movies/Movies/Film found, ignoring and will not call update; categorylist=%s' % category)
 
   def update(self, metadata, media, lang, force):
 	Log.Debug('***UPDATE CALLEDDDDDDDDDDDDDDDDDDDDDDDD')
