@@ -179,11 +179,10 @@ class BMTAgent(Agent.TV_Shows):
 	metadata.summary = getShowSeriesInfo(show.get('ShowExternalID'))
 	metadata.content_rating = show.get('ShowRated')
 	cats = show.get('ShowCategoriesList')
-	i = 0
+	metadata.genres.clear()
 	for cat in cats:
-		metadata.genres[i] = cat
-		Log.Debug("metadata.genres[%d]=%s" % (i, cat))
-		i = i+1
+		Log.Debug("cat=%s" % cat)
+		metadata.genres.add(cat)
 	
 	#metadata.posters
 	background_url = SAGEX_HOST + '/sagex/media/background/%s' % mediaFileID
