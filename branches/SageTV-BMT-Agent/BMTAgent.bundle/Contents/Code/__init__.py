@@ -122,6 +122,17 @@ def setWatchedUnwatchedFlag(id, isWatched):
 		return False
 	return True
   
+def getFanart(url):
+	try:
+		Log.Debug("***getFanart: Attempting to fetch fanart from the following url:%s" % url)
+		response = urllib.urlopen(url)
+		fileData = response.read()
+		Log.Debug("***getFanart: Successfully read fanart from the following url:%s" % url)
+	except IOError, i:
+		Log.Debug("ERROR in getFanart: Unable to download fanart at the following URL: %s" % url)
+		return None
+	return fileData
+
 class BMTAgent(Agent.TV_Shows):
   name = 'SageTV BMT Agent'
   languages = [Locale.Language.English]
@@ -137,19 +148,7 @@ class BMTAgent(Agent.TV_Shows):
 		Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
 	
 	quotedFilename = media.filename
-	if(UNC_MAPPINGS == ""):
-		unquotedFilename = urllib.unquote(quotedFilename)
-	else:
-		#Map the path from Plex (which only does drive letters) to what could be a network share location that Sage uses
-		maps = UNC_MAPPINGS.split(';')
-		for mapValues in maps:
-			map = mapValues.split(',')
-			unquotedFilename = urllib.unquote(quotedFilename)
-			unquotedFilename = unquotedFilename.replace(map[0],map[1])
-			quotedFilename = urllib.quote(unquotedFilename)
-	
-	Log.Debug('***quotedFilename=%s' % quotedFilename)
-	Log.Debug('***unquotedFilename=%s' % unquotedFilename)
+	unquotedFilename = urllib.unquote(quotedFilename)
 	fileExists = isFileInSageTVDB(unquotedFilename)
 	
 	if(fileExists):
@@ -178,6 +177,7 @@ class BMTAgent(Agent.TV_Shows):
 	metadata.title = show.get('ShowTitle')
 	metadata.title_sort = metadata.title
 	metadata.summary = getShowSeriesInfo(show.get('ShowExternalID'))
+	metadata.content_rating = show.get('ShowRated')
 	cats = show.get('ShowCategoriesList')
 	i = 0
 	for cat in cats:
@@ -185,6 +185,20 @@ class BMTAgent(Agent.TV_Shows):
 		Log.Debug("metadata.genres[%d]=%s" % (i, cat))
 		i = i+1
 	
+	#metadata.posters
+	background_url = SAGEX_HOST + '/sagex/media/background/%s' % mediaFileID
+	poster_url = SAGEX_HOST + '/sagex/media/poster/%s' % mediaFileID
+	banner_url = SAGEX_HOST + '/sagex/media/banner/%s' % mediaFileID
+
+	metadata.art[background_url] = Proxy.Media(getFanart(background_url))
+	metadata.posters[poster_url] = Proxy.Media(getFanart(poster_url))
+	metadata.banners[banner_url] = Proxy.Media(getFanart(banner_url))
+	
+	# If we haven't added this poster.
+	#if poster_url not in metadata.posters:
+		# Add the poster.
+		#metadata.posters[poster_url] = Proxy.Media(data)
+
 	# Set the Episode's metadata
 	s = str(show.get('ShowSeasonNumber')) # must convert to string or else Plex throws a serialization exception
 	e = str(show.get('ShowEpisodeNumber')) # must convert to string or else Plex throws a serialization exception
@@ -192,7 +206,8 @@ class BMTAgent(Agent.TV_Shows):
 		s = "0"
 		e = "0"
 	Log.Debug("UPDATING METADATA FOR SEASON: %s; EPISODE: %s" % (s, e))
-	episode = metadata.seasons[s].episodes[e]
+	season = metadata.seasons[s]
+	episode = season.episodes[e]
 
 	startTime = float(show.get('OriginalAiringDate') // 1000)
 	airDate = date.fromtimestamp(startTime)
@@ -208,6 +223,14 @@ class BMTAgent(Agent.TV_Shows):
 	episode.guest_stars = show.get('PeopleListInShow')
 	episode.show = show.get('ShowTitle')
 	
+	#season.posters
+	#season.banners
+	season.posters[poster_url] = Proxy.Media(getFanart(poster_url))
+	season.banners[banner_url] = Proxy.Media(getFanart(banner_url))
+
+	thumb_url = SAGEX_HOST + '/sagex/media/thumbnail/%s' % mediaFileID
+	episode.thumbs[thumb_url] = Proxy.Media(getFanart(thumb_url))
+	
 	#Log.Debug('*** callingggggggg: id=%s' % metadata.seasons[s].episodes[e])
 	#setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
 	#episode.writers = 
@@ -216,5 +239,5 @@ class BMTAgent(Agent.TV_Shows):
 	#episode.rating = 
 	#episode.genres = show.get('ShowCategoriesString')
 	
-	Log.Debug("Metadata that was set includes: episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;episode.show=%s;" % (episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, episode.show))
+	Log.Debug("Metadata that was set includes: episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;episode.show=%s;metadata.content_rating=%s;" % (episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, episode.show, metadata.content_rating))
 
