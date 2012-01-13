@@ -5,6 +5,8 @@ from datetime import date
 SAGEX_HOST = ""
 PLEX_HOST = ""
 
+DEFAULT_CHARSET = 'utf-8'
+
 def Start():
   HTTP.CacheTime = CACHE_1HOUR * 24 
   
@@ -228,13 +230,12 @@ class BMTAgent(Agent.TV_Shows):
 	thumb_url = SAGEX_HOST + '/sagex/media/thumbnail/%s' % mediaFileID
 	episode.thumbs[thumb_url] = Proxy.Media(getFanart(thumb_url))
 	
-	#Log.Debug('*** callingggggggg: id=%s' % metadata.seasons[s].episodes[e])
+	#Log.Debug('*** callingggggggg: id=%s' % media.id)
 	#setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
 	#episode.writers = 
 	#episode.directors = 
 	#episode.producers = 
 	#episode.rating = 
-	#episode.genres = show.get('ShowCategoriesString')
 	
 	Log.Debug("Metadata that was set includes: episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;episode.show=%s;metadata.content_rating=%s;" % (episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, episode.show, metadata.content_rating))
 
