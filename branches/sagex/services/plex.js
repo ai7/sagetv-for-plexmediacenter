@@ -10,7 +10,12 @@
 * 
 **********************/
 function GetMediaFileForName(filename) {
-	var allMedia = SageAPI.call('GetMediaFiles', null);
+	var allMedia = MediaFileAPI.GetMediaFiles();
+	
+	//var allMedia = SageAPI.call('GetMediaFiles', null);
+	
+	//var allMedia = SageAPI.call("DataUnion", [SageAPI.call("GetMediaFiles", ["T"]), SageAPI.call("GetMediaFiles", ["TL"])]);
+	//var allMedia = SageAPI.call("GetMediaFiles", ["TL"]);
 	var mediaFile= false;
 	
 	//
@@ -44,7 +49,7 @@ function GetMediaFileForName(filename) {
         }
 		
 	}
-   
-	return mediaFile; 
-
+		
+	return mediaFile;
+	
 }
