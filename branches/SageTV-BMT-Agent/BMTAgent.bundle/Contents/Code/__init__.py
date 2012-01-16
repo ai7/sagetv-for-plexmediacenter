@@ -1,5 +1,4 @@
-import re, time, unicodedata, hashlib, types, urllib, os, simplejson as json
-from time import strftime
+import re, datetime, unicodedata, hashlib, types, urllib, os, simplejson as json
 from datetime import date
 
 SAGEX_HOST = ""
@@ -49,10 +48,7 @@ def executeSagexAPICall(url, resultToGet):
 def getShowSeriesInfo(showID):
 	url = SAGEX_HOST + '/sagex/api?c=GetShowSeriesInfo&1=show:%s&encoder=json' % showID
 	resp = executeSagexAPICall(url, 'SeriesInfo')
-	if(resp):
-		return resp.get('SeriesDescription')
-	else:
-		return None
+	return resp
   
 def getMediaFileForID(mediaFileID):
 	url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForID&1=%s&encoder=json' % mediaFileID
@@ -71,6 +67,8 @@ def readPropertiesFromPropertiesFile():
 		if(cwd.find("\\") >=0): #backslashes are typically from windows machines
 			cwd = cwd.replace("\\\\?\\", "")
 			cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagent", "Plug-ins\\BMTAgent.bundle\\Contents\\Code\\")
+		elif(len(cwd) == 1): #for some reason on Macs, CWD returns just a forward slash /
+			cwd = "~/Library/Application Support/Plex Media Server/Plug-ins/BMTAgent.bundle/Contents/Code/"
 		elif(cwd.find("/") >=0): #forward slashes are typically from non-windows machines
 			cwd = cwd.replace("Plug-in Support/Data/com.plexapp.agents.bmtagent", "Plug-ins/BMTAgent.bundle/Contents/Code/")
 
@@ -176,7 +174,16 @@ class BMTAgent(Agent.TV_Shows):
 	#Set the Show's metadata
 	metadata.title = show.get('ShowTitle')
 	metadata.title_sort = metadata.title
-	metadata.summary = getShowSeriesInfo(show.get('ShowExternalID'))
+	series = getShowSeriesInfo(show.get('ShowExternalID'))
+	if(series):
+		metadata.summary = series.get('SeriesDescription')
+		seriesPremiere = series.get('SeriesPremiereDate')
+		Log.Debug('***seriesPremiere=%s' % seriesPremiere)
+		airDate = datetime.datetime.strptime(seriesPremiere, '%Y-%m-%d')
+		Log.Debug('***airDate=%s' % str(airDate))
+		metadata.originally_available_at = airDate
+		metadata.studio = series.get('SeriesNetwork')	
+	
 	metadata.content_rating = show.get('ShowRated')
 	cats = show.get('ShowCategoriesList')
 	metadata.genres.clear()
