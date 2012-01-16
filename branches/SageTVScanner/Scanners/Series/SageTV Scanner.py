@@ -182,13 +182,10 @@ def Scan(path, files, mediaList, subdirs):
           tv_show.display_offset = 0
           tv_show.parts.append(i)
           mediaList.append(tv_show)
-          #else:
-          #  print "**** No Match found for file %s" % file
-        
-		  # Stack the results.
+          # Stack the results.
           Stack.Scan(path, files, mediaList, subdirs)
         else:
-		  print "Current file is a Movie or Film! Removing from scanner"
+          print "Current file is a Movie or Film! Removing from scanner"
 		  
     else:
       print "******NO MATCH FOUND BY SCANNER!"
