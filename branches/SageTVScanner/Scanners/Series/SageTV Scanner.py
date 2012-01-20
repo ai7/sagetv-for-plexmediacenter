@@ -13,6 +13,8 @@ import Media, VideoFiles, Stack, Utils
 from mp4file import mp4file, atomsearch
 #from datetime import date
 
+DEFAULT_CHARSET = 'utf-8'
+
 # Enter ip address and port http://x.x.x.x:port
 # or if you server requires user/pass enter http://user:pass@x.x.x.x:port
 SAGEX_HOST = 'http://192.168.1.110:8500'
