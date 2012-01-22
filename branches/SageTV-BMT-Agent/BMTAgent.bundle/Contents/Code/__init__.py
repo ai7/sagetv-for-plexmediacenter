@@ -184,7 +184,10 @@ class BMTAgent(Agent.TV_Shows):
 		metadata.originally_available_at = airDate
 		metadata.studio = series.get('SeriesNetwork')	
 	
-	metadata.content_rating = show.get('ShowRated')
+	showRated = show.get('ShowRated')
+	if(showRated.find("TV") >= 0):
+		metadata.content_rating = showRated.replace("TV", "TV-")
+
 	cats = show.get('ShowCategoriesList')
 	metadata.genres.clear()
 	for cat in cats:
