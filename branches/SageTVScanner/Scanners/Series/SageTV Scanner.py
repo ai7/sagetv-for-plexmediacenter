@@ -153,8 +153,8 @@ def Scan(path, files, mediaList, subdirs):
         airing = mf.get('Airing')
         showMF = airing.get('Show')
         category = showMF.get('ShowCategoriesString')
-        showTitle = str(showMF.get('ShowTitle'))
-        episodeTitle = str(showMF.get('ShowEpisode'))
+        showTitle = showMF.get('ShowTitle').encode('UTF-8')
+        episodeTitle = showMF.get('ShowEpisode').encode('UTF-8')
         if( episodeTitle == None or episodeTitle == ""):
           episodeTitle = showTitle
       
