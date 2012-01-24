@@ -221,19 +221,18 @@ class BMTAgent(Agent.TV_Shows):
 	startTime = float(show.get('OriginalAiringDate') // 1000)
 	airDate = date.fromtimestamp(startTime)
 
-	if(show.get('ShowEpisode') == ""):
-		episode.title = show.get('ShowTitle')
-	else:
-		episode.title = show.get('ShowEpisode')
 	episode.summary = show.get('ShowDescription')
 	episode.originally_available_at = airDate
 	episode.duration = mf.get('FileDuration')
 	episode.season = int(s)
-	episode.guest_stars = show.get('PeopleListInShow')
-	episode.show = show.get('ShowTitle')
+	#episode.show = show.get('ShowTitle') #don't need to set as this and episode.title are set in the scanner
+
+	stars = show.get('PeopleListInShow')
+	episode.guest_stars.clear()
+	for star in stars:
+		Log.Debug("star=%s" % star)
+		episode.guest_stars.add(star)
 	
-	#season.posters
-	#season.banners
 	season.posters[poster_url] = Proxy.Media(getFanart(poster_url))
 	season.banners[banner_url] = Proxy.Media(getFanart(banner_url))
 
