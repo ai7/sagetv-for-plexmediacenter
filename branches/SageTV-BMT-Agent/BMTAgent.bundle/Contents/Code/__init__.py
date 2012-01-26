@@ -141,6 +141,7 @@ class BMTAgent(Agent.TV_Shows):
 		Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
 	
 	quotedFilepathAndName = media.filename
+	Log.Debug('****media.id=%s; media.filename=%s' % (str(media.id), quotedFilepathAndName))
 	unquotedFilepathAndName = urllib.unquote(quotedFilepathAndName)
 	# Pull out just the filename to use
 	if(unquotedFilepathAndName.find("\\")<0):
