@@ -2,24 +2,30 @@
 = SageTV for Plex Media Server (and Roku Too!) =
 
 == Requirements ==
-*Media Server (PMS) 0.9.5 or newer installed on one computer:*
-  * Linux: [http:// download] [http:// installation instructions]
-  * OS X: [http:// download] [http:// installation instructions]
-  * Windows: [http:// download] [http:// installation instructions]
+*Plex Media Server (PMS) 0.9.5 or newer installed on one computer:*
+  * OS X: [http://www.plexapp.com/download/mac-download-new.php download] [http://wiki.plexapp.com/index.php/PlexNine_PMS_Installation#Installation_-_Mac_OS_X installation instructions]
+  * Windows: [http://www.plexapp.com/download/win-download-new.php download] [http://wiki.plexapp.com/index.php/PlexNine_PMS_Installation#Installation_-_Windows installation instructions]
+  * Linux: [http://www.plexapp.com/linux/linux-pms-download.php download] (installation instructions are located on the download page); see also [http://forums.plexapp.com/index.php/topic/34063-0952-for-linux-distros/ various Linux distros].
+
+*Be sure you're installing _Plex Media Server_ and NOT Plex Media Center* You can install the Plex Media Center software on Mac and PCs if you want to use them as Plex clients with access to SageTV recordings but the Plex Media Server must be installed first.
 
 *SageTV server software* 
   * v7.1.9 installed (no longer available for download)
 *SageTV sagex-services plugin*
   * installed (this will also install the Jetty Web Server if it's not already installed) 
 *SageTV Customer Scanner (for Plex Media Server)*
+  * custom code downloaded and installed from this project site
 *SageTV BMT Agent (for Plex Media Server)*
-
+  * custom code downloaded and installed from this project site
+*plex.js file for SageTV server
+  * custom code downloaded and installed from this project site 
+  
 == Optional == 
 * Roku Box with Plex Channel installed*
 
 == Introduction==
 
-This document will not cover specific steps on how to install the SageTV Server or the Plex Media Server. It is also assumed that the user is somewhat familiar with the Plex Media Manager (browser-based access to the Plex media library / database).
+This document will not cover specific steps on how to install the SageTV Server or the Plex Media Server. It is also assumed that the user is somewhat familiar with the [http:// Plex Media Manager] (browser-based access to the Plex media library / database).
 
 == Installation ==
 === Installing sagex-services plugin for SageTV Server ===
@@ -39,17 +45,23 @@ Optional: configure the user name, password, and port for the Jetty Web Server (
   # Make a note of the user name, password and port since these will be used to configure the SageTV for Boxee app
 Note: the Jetty Web Server is installed as a part of installing the sagex-services plugin but will not be used by Plex Media Server. See: [http://tools.assembla.com/sageplugins/wiki/Jetty Jetty Web Server plugin wiki] for complete information.
 
-=== Installing the SageTV Custom Scanner for Plex Media Manager ===
 
-The SageTV Custom Scanner will take care of the following tasks as part of identifying SageTV recordings:
-  # Scans the SageTV recording directories (as added to the Plex Media Manager by the user)
-  # Creates the appropriate PMS objects ("Movie" or "TV Show")
-  # Updates the metadata stored in the Plex Media Manager based on the filename only
-  # Passes the PMS object back to PMS for further processing (e.g. SageTV BMT Agent)
+=== Installing the SageTV Custom Code for Plex Media Server ===
 
-General information on [http://forums.plexapp.com/index.php/topic/19396-how-to-install-a-custom-scanner/ installing a custom scanner] (from the Plex forums).
+The custom code to be installed on the Plex Media Server and SageTV Server can be downloaded in this [http:// zip file]:
+  # SageTV Customer Scanner (for Plex Media Server)
+  # SageTV BMT Agent (for Plex Media Server)
+  # plex.js file (for SageTV server)* {still some question about how this file is handled}
 
-=== Installing the SageTV BMT Agent for Plex Media Manager ===
+Instructions:
+  # Download the zip file
+  # Find where your Plex Media Server main folder is:
+    * OS X: ~/Library/Application Support/Plex/
+    * Windows 7: C:\Users\_your_user_name_\AppData\Local\Plex
+    * Vista: C:\Documents and Settings\_your_user_name_\Application Data\Plex
+    * Linux ???
+  # Unzip the file zip file, targeting the top level Plex folder from above
+  
+The following folder/files will be installed:
 
-This Agent is the second of YYY parts that enables the Plex Media Server to query the SageTV database and insert the metadata of SageTV recordings into the Plex database.
-
+== Configuration ==
