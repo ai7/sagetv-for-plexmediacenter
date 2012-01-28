@@ -63,5 +63,21 @@ Instructions:
   # Unzip the file zip file, targeting the top level Plex folder from above
   
 The following folder/files will be installed:
+{{{
+Scanner
+--Series
+----simplejson
+------stuff
+----SageTVScanner.py
+Plug-ins
+--BMTAgent.bundle
+----Contents
+------Code
+--------__init__.py
+--------BMTAgent.properties
+------Resources (stuff)
+------Info.plist
+------VERSION
+}}} 
 
 == Configuration ==
