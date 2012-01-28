@@ -1,4 +1,4 @@
-<wiki:toc max_depth="2" />
+<wiki:toc max_depth="3" />
 = SageTV for Plex Media Server (and Roku Too!) =
 
 == Requirements ==
