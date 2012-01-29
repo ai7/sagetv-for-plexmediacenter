@@ -22,6 +22,7 @@
   
 == Optional == 
 * Roku Box with Plex Channel installed*
+* Plex Media Center installed Windows or OS X
 
 == Introduction==
 
@@ -45,29 +46,24 @@ Optional: configure the user name, password, and port for the Jetty Web Server (
   # Make a note of the user name, password and port since these will be used to configure the SageTV for Boxee app
 Note: the Jetty Web Server is installed as a part of installing the sagex-services plugin but will not be used by Plex Media Server. See: [http://tools.assembla.com/sageplugins/wiki/Jetty Jetty Web Server plugin wiki] for complete information.
 
-
 === Installing the SageTV Custom Code for Plex Media Server ===
 
-The custom code to be installed on the Plex Media Server and SageTV Server can be downloaded in this [http:// zip file]:
-  # SageTV Customer Scanner (for Plex Media Server)
-  # SageTV BMT Agent (for Plex Media Server)
-  # plex.js file (for SageTV server)* {still some question about how this file is handled}
+*Part 1*
 
-Instructions:
-  # Download the zip file
+  # Download the [http://code.google.com/p/sagetv-for-plexmediacenter/downloads/list pms.zip] file
   # Find where your Plex Media Server main folder is:
     * OS X: ~/Library/Application Support/Plex/
     * Windows 7: C:\Users\_your_user_name_\AppData\Local\Plex
     * Vista: C:\Documents and Settings\_your_user_name_\Application Data\Plex
     * Linux ???
-  # Unzip the file zip file, targeting the top level Plex folder from above
+  # Unzip the zip file, targeting the top level Plex folder from above.
   
 The following folder/files will be installed:
 {{{
 Scanner
 --Series
 ----simplejson
-------stuff
+------files
 ----SageTVScanner.py
 Plug-ins
 --BMTAgent.bundle
@@ -80,4 +76,16 @@ Plug-ins
 ------VERSION
 }}} 
 
+*Part 2*
+
+Install the plex.js file on the SageTV server:
+
+  # Download the [http://code.google.com/p/sagetv-for-plexmediacenter/downloads/list sagex.zip] file
+  # Unzip the zip file into SageTV\SageTV\sagex\services
+  # plex.js should be listed 
+
 == Configuration ==
+
+
+
+== Troubleshooting ==
