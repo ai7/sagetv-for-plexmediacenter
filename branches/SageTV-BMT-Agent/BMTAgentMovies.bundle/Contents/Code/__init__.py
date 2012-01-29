@@ -188,14 +188,15 @@ class BMTAgent(Agent.Movies):
 		metadata.studio = series.get('SeriesNetwork')	
 	
 	showRated = show.get('ShowRated')
-	if(showRated.find("TV") >= 0):
-		metadata.content_rating = showRated.replace("TV", "TV-")
+	if(showRated.find("PG13") >= 0):
+		metadata.content_rating = "PG-13"
 
 	cats = show.get('ShowCategoriesList')
 	metadata.genres.clear()
 	for cat in cats:
-		Log.Debug("cat=%s" % cat)
-		metadata.genres.add(cat)
+		if(cat != "Movies" and cat != "Movie" and cat != "Film"):
+			Log.Debug("cat=%s" % cat)
+			metadata.genres.add(cat)
 	
 	#metadata.posters
 	background_url = SAGEX_HOST + '/sagex/media/background/%s' % mediaFileID
