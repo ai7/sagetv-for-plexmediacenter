@@ -93,11 +93,11 @@ Two files in the Plex Media Server  will need to be updated with the location of
 
 Update each with the correct IP address:
 
-BMTAgent.properties, update the SAGEX_HOST line:
+*BMTAgent.properties*, update the SAGEX_HOST line:
   * SAGEX_HOST=http://user:pass@IPAddress:PortNo
     e.g. http://sage:frey@192.168.1.12:8080
 
-SageTV Scanner.py, update the SAGEX_HOST line:
+*SageTV Scanner.py*, update the SAGEX_HOST line:
   * SAGEX_HOST = 'http://user:pass@IPAdress:PortNo'
     e.g. 'http://sage:frey@192.168.1.12:8080'
 
@@ -134,3 +134,8 @@ Depending on the number of files it may take an hour or longer for all the files
   * Movie scanning is not yet supported but should be available in an upcoming release
 
 == Troubleshooting ==
+
+There are two log files in the Logs folder in the Plex Media Server folder that may provide clues to any issues that might arise:
+
+  * Plex Media Server\Logs\Plex Media Scanner.log
+  * Plex Media Server\Logs\PMS Plugin Logs\com.plexapp.agents.bmtagent.log (and previous logs, .1, .2, etc)
