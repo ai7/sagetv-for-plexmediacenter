@@ -109,10 +109,10 @@ Update each with the correct IP address:
 
 == Setup and Scanning ==
 
-Once all the files have been installed, the Plex Media Manager is used to add a new "section"
+Once all the files have been installed, use the Plex Media Manager to add a new "section", containing SageTV recordings.
 
   * Using your browser, navigate to the Plex Media Manager page
-    e.g. http://PlexMediaServerIPAddress:PortNo/manage/index.html
+    e.g. http://localhost:32400/manage/index.html if accessing the manager from the same computer that Plex Media Server was installed.
   * Click on "TV Shows"
   * Enter the "Name:" you want the Section/Entry to show up as in Plex, e.g. Recorded TV Shows
 
