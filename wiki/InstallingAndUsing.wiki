@@ -17,7 +17,7 @@
   * custom code downloaded and installed from this project site
 *SageTV BMT Agent (for Plex Media Server)*
   * custom code downloaded and installed from this project site
-*plex.js file for SageTV server
+*plex.js file for SageTV server*
   * custom code downloaded and installed from this project site 
   
 == Optional == 
@@ -126,7 +126,7 @@ Plex will immediately start scanning the SageTV recordings folder(s); reload the
 
 [pic]
   
-Depending on the number of files it may take an hour or longer
+Depending on the number of files it may take an hour or longer for all the files to be scanned and 
 
 
 == Not Currently Supported ==
