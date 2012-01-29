@@ -50,11 +50,11 @@ Note: the Jetty Web Server is installed as a part of installing the sagex-servic
 
 *Part 1*
 
-  # Download the [http://code.google.com/p/sagetv-for-plexmediacenter/downloads/list pms.zip] file
+  # Download the [http://code.google.com/p/sagetv-for-plexmediacenter/downloads/list sagetv-for-plexmediacenter.zip] file
   # Find where your Plex Media Server main folder is:
-    * OS X: ~/Library/Application Support/Plex/
-    * Windows 7: C:\Users\_your_user_name_\AppData\Local\Plex
-    * Vista: C:\Documents and Settings\_your_user_name_\Application Data\Plex
+    * OS X: ~/Library/Application Support/Plex Media Server
+    * Windows 7: C:\Users\_your_user_name_\AppData\Local\Plex Media Server
+    * Vista: C:\Documents and Settings\_your_user_name_\Application Data\Plex Media Server
     * Linux ???
   # Unzip the zip file, targeting the top level Plex folder from above.
   
@@ -86,6 +86,22 @@ Install the plex.js file on the SageTV server:
 
 == Configuration ==
 
+Two files in the Plex Media Server  will need to be updated with the location of the SageTV server:
+
+  # Plug-ins\BMTAgent.bundle\Contents\Code\BMTAgent.properties
+  # Scanners\Series\SageTV Scanner.py
+
+Update each with the correct IP address:
+
+BMTAgent.properties, update the SAGEX_HOST line:
+  * SAGEX_HOST=http://user:pass@IPAddress:PortNo
+    e.g. http://sage:frey@192.168.1.12:8080
+
+SageTV Scanner.py, update the SAGEX_HOST line:
+  * SAGEX_HOST = 'http://user:pass@IPAdress:PortNo'
+    e.g. 'http://sage:frey@192.168.1.12:8080'
+
+    NOTE: in the second file, single quotes are needed
 
 
 == Troubleshooting ==
