@@ -108,7 +108,25 @@ SageTV Scanner.py, update the SAGEX_HOST line:
 Once all the files have been installed, the Plex Media Manager is used to add a new "section"
 
   # Using your browser, navigate to the Plex Media Manager page
-  # 
+    e.g. http://PlexMediaServerIPAddress:PortNo/manage/index.html
+  # Click on "TV Shows"
+
+  # Enter the "Name:" you want the Section/Entry to show up as in Plex, e.g. Recorded TV Shows
+  # Browse to and select your SageTV recordings folder(s) via the Add button for the "Media folders:" -- alternately you can manually enter the folder path using the "Manual Entry" button.
+
+  # Click on "Advanced" in order to select the custom scanner (SageTV Scanner) and metadata agent (SageTV BMT Agent)  for SageTV.
+
+[two pix]
+
+  # Multiple SageTV recording folders can be added to a single section
+
+  # And finally, click on "Add Section"
+
+Plex will immediately start scanning the SageTV recordings folder(s); reload the page in order to see the "spinner" indicating the scan status:
+
+[pic]
+  
+Depending on the number of files it may take an hour or longer
 
 
 == Not Currently Supported ==
@@ -116,5 +134,3 @@ Once all the files have been installed, the Plex Media Manager is used to add a 
   * Movie scanning is not yet supported but should be available in an upcoming release
 
 == Troubleshooting ==
-
-
