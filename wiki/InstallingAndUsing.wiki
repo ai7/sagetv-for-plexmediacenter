@@ -139,3 +139,5 @@ There are two log files in the Logs folder in the Plex Media Server folder that 
 
   * Plex Media Server\Logs\Plex Media Scanner.log
   * Plex Media Server\Logs\PMS Plugin Logs\com.plexapp.agents.bmtagent.log (and previous logs, .1, .2, etc)
+
+For additional help, you can post to the [http://forums.sagetv.com/forums/showthread.php?t=57842 official thread] or if you find a bug, you can a submit a [http://code.google.com/p/sagetv-for-plexmediacenter/issues/list new issue].
