@@ -101,7 +101,20 @@ SageTV Scanner.py, update the SAGEX_HOST line:
   * SAGEX_HOST = 'http://user:pass@IPAdress:PortNo'
     e.g. 'http://sage:frey@192.168.1.12:8080'
 
-    NOTE: in the second file, single quotes are needed
+    NOTE: *in the second file, single quotes are needed*
 
+== Setup and Scanning ==
+
+Once all the files have been installed, the Plex Media Manager is used to add a new "section"
+
+  # Using your browser, navigate to the Plex Media Manager page
+  # 
+
+
+== Not Currently Supported ==
+
+  * Movie scanning is not yet supported but should be available in an upcoming release
 
 == Troubleshooting ==
+
+
