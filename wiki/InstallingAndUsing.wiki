@@ -23,6 +23,7 @@
 == Optional == 
   * Roku Box with Plex Channel installed
   * Plex Media Center installed Windows or OS X
+  * Or really any Plex-supported client :)
 
 == Introduction==
 
@@ -86,7 +87,7 @@ Install the plex.js file on the SageTV server:
 
 == Configuration ==
 
-Two files in the Plex Media Server  will need to be updated with the location of the SageTV server:
+Two files in the Plex Media Server will need to be updated manually with the location of the SageTV server:
 
   # Plug-ins\BMTAgent.bundle\Contents\Code\BMTAgent.properties
   # Scanners\Series\SageTV Scanner.py
@@ -103,37 +104,59 @@ Update each with the correct IP address:
 
     NOTE: *in the second file, single quotes are needed*
 
-    NOTE: only use user:pass in the URL if your web server is password protected. You can test access via: http://IPAddress:PortNo/sagex/api
+    NOTE: only use user:pass in the URL if your web server is password protected. You can test access via: 
+    http://IPAddress:PortNo/sagex/api
 
 == Setup and Scanning ==
 
 Once all the files have been installed, the Plex Media Manager is used to add a new "section"
 
-  # Using your browser, navigate to the Plex Media Manager page
+  * Using your browser, navigate to the Plex Media Manager page
     e.g. http://PlexMediaServerIPAddress:PortNo/manage/index.html
-  # Click on "TV Shows"
+  * Click on "TV Shows"
+  * Enter the "Name:" you want the Section/Entry to show up as in Plex, e.g. Recorded TV Shows
 
-  # Enter the "Name:" you want the Section/Entry to show up as in Plex, e.g. Recorded TV Shows
-  # Browse to and select your SageTV recordings folder(s) via the Add button for the "Media folders:" -- alternately you can manually enter the folder path using the "Manual Entry" button.
+    http://farm8.staticflickr.com/7032/6782948371_77b1e6435d.jpg
 
-  # Click on "Advanced" in order to select the custom scanner (SageTV Scanner) and metadata agent (SageTV BMT Agent)  for SageTV.
+  * Click on the Add button
+  * Browse to and select your SageTV recordings folder(s):
 
-[two pix]
+    http://farm8.staticflickr.com/7004/6782948429_1fa6396216.jpg
 
-  # Multiple SageTV recording folders can be added to a single section
+  * Alternatively, manually enter the folder path using the "Manual Entry" button.
+  * Click on "Advanced" in order to select the custom scanner (SageTV Scanner)
 
-  # And finally, click on "Add Section"
+    http://farm8.staticflickr.com/7035/6782948529_ec5006fa4d.jpg
+
+  *  and metadata agent (SageTV BMT Agent)  for SageTV.
+
+    http://farm8.staticflickr.com/7151/6782948475_96b49ed851.jpg
+
+  * Multiple SageTV recording folders can be added to a single section by using the Add button:
+
+    http://farm8.staticflickr.com/7156/6782948739_822878f981.jpg
+
+  * And finally, click on "Add Section"
 
 Plex will immediately start scanning the SageTV recordings folder(s); reload the page in order to see the "spinner" indicating the scan status:
 
-[pic]
-  
+http://farm8.staticflickr.com/7025/6782948795_ed9e830822_z.jpg
+
 Depending on the number of recordings it may take an hour or longer for all the files to be scanned and for the the Plex Media Server media database to be populated with SageTV metadata.
 
+http://farm8.staticflickr.com/7023/6782948897_c61b035b34_z.jpg
+
+From a Plex client, this new section will show up with the same name assigned to it:
+
+http://farm8.staticflickr.com/7157/6783079913_7eafa482d8_b.jpg
+
+== How to Apply Updates ==
+
+(forthcoming)
 
 == Not Currently Supported ==
 
-  * Movie scanning is not yet supported but should be available in an upcoming release
+  * Movie scanning is not yet supported but should be available in a future update
 
 == Troubleshooting ==
 
