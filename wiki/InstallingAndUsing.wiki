@@ -128,7 +128,7 @@ Plex will immediately start scanning the SageTV recordings folder(s); reload the
 
 [pic]
   
-Depending on the number of files it may take an hour or longer for all the files to be scanned and 
+Depending on the number of recordings it may take an hour or longer for all the files to be scanned and for the the Plex Media Server media database to be populated with SageTV metadata.
 
 
 == Not Currently Supported ==
