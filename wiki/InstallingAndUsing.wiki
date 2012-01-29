@@ -103,6 +103,8 @@ Update each with the correct IP address:
 
     NOTE: *in the second file, single quotes are needed*
 
+    NOTE: only use user:pass in the URL if your web server is password protected. You can test access via: http://IPAddress:PortNo/sagex/api
+
 == Setup and Scanning ==
 
 Once all the files have been installed, the Plex Media Manager is used to add a new "section"
