@@ -127,7 +127,7 @@ def getFanart(url):
 	return fileData
 
 class BMTAgent(Agent.Movies):
-  name = 'SageTV BMT Agent'
+  name = 'SageTV BMT Agent (Movies)'
   languages = [Locale.Language.English]
   primary_provider = True
   accepts_from = None
