@@ -21,7 +21,7 @@
   * custom code downloaded and installed from this project site 
   
 == Optional == 
-* Roku Box with Plex Channel installed*
+* Roku Box with Plex Channel installed
 * Plex Media Center installed Windows or OS X
 
 == Introduction==
