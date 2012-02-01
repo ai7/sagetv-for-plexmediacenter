@@ -45,11 +45,6 @@ def executeSagexAPICall(url, resultToGet):
 	else:
 		return None
   
-def getShowSeriesInfo(showID):
-	url = SAGEX_HOST + '/sagex/api?c=GetShowSeriesInfo&1=show:%s&encoder=json' % showID
-	resp = executeSagexAPICall(url, 'SeriesInfo')
-	return resp
-  
 def getMediaFileForID(mediaFileID):
 	url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForID&1=%s&encoder=json' % mediaFileID
 	return executeSagexAPICall(url, 'MediaFile')
@@ -178,14 +173,14 @@ class BMTAgent(Agent.Movies):
 	metadata.summary = show.get('ShowDescription')
 	#metadata.tagline = show.get('ShowDescription')
 	metadata.duration = mf.get('FileDuration')
-	series = getShowSeriesInfo(show.get('ShowExternalID'))
-	if(series):
-		seriesPremiere = series.get('SeriesPremiereDate')
-		Log.Debug('***seriesPremiere=%s' % seriesPremiere)
-		airDate = datetime.datetime.strptime(seriesPremiere, '%Y-%m-%d')
-		Log.Debug('***airDate=%s' % str(airDate))
-		metadata.originally_available_at = airDate
-		metadata.studio = series.get('SeriesNetwork')	
+	
+	startTime = float(airing.get('AiringStartTime') // 1000)
+	airDate = date.fromtimestamp(startTime)
+	Log.Debug('***airDate=%s' % str(airDate))
+	metadata.originally_available_at = airDate
+	metadata.year = airDate.year
+	
+	metadata.studio = airing.get('AiringChannelName')
 	
 	showRated = show.get('ShowRated')
 	if(showRated.find("PG13") >= 0):
