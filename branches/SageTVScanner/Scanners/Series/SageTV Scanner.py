@@ -158,7 +158,7 @@ def Scan(path, files, mediaList, subdirs):
         if( episodeTitle == None or episodeTitle == ""):
           episodeTitle = showTitle
       
-        showYear = showMF.get('ShowYear')
+        showYear = showMF.get('ShowYear').encode('UTF-8')
         if(showYear == None or showYear == ""):
           showYear = ''
 	# Retrieve show original air date, and grab the year out of it for storage
