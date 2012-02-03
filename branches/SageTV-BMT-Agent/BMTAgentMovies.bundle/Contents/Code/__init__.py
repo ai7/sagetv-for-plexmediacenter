@@ -174,8 +174,9 @@ class BMTAgent(Agent.Movies):
 	
 	startTime = float(airing.get('AiringStartTime') // 1000)
 	airDate = date.fromtimestamp(startTime)
-	Log.Debug('***airDate=%s' % str(airDate))
+	Log.Debug('***metadata.year=%s;airDate=%s' % (metadata.year, str(airDate)))
 	metadata.originally_available_at = airDate
+	metadata.year = int(show.get('ShowYear'))
 	
 	metadata.studio = airing.get('AiringChannelName')
 	
@@ -194,13 +195,11 @@ class BMTAgent(Agent.Movies):
 	background_url = SAGEX_HOST + '/sagex/media/background/%s' % mediaFileID
 	poster_url = SAGEX_HOST + '/sagex/media/poster/%s' % mediaFileID
 
-	metadata.art[background_url] = Proxy.Media(getFanart(background_url))
-	metadata.posters[poster_url] = Proxy.Media(getFanart(poster_url))
-	
-	# If we haven't added this poster.
-	#if poster_url not in metadata.posters:
-		# Add the poster.
-		#metadata.posters[poster_url] = Proxy.Media(data)
+	#First check if the poster is already assigned before adding it again
+	if poster_url not in metadata.posters:
+		metadata.posters[poster_url] = Proxy.Media(getFanart(poster_url))
+	if background_url not in metadata.art:
+		metadata.art[background_url] = Proxy.Media(getFanart(background_url))
 
 	roles = show.get('RolesInShow')
 	stars = show.get('PeopleListInShow')
