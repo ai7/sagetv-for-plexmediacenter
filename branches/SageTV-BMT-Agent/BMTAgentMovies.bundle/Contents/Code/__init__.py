@@ -136,7 +136,7 @@ class BMTAgent(Agent.Movies):
 		Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
 	
 	quotedFilepathAndName = media.filename
-	Log.Debug('****media.id=%s; media.filename=%s' % (str(media.id), quotedFilepathAndName))
+	Log.Debug('****media.id=%s; media.year=%s; media.filename=%s' % (str(media.id), media.year, quotedFilepathAndName))
 	unquotedFilepathAndName = urllib.unquote(quotedFilepathAndName)
 	# Pull out just the filename to use
 	if(unquotedFilepathAndName.find("\\")<0):
@@ -154,9 +154,7 @@ class BMTAgent(Agent.Movies):
 		# Check if the Sage recording is a movie or film; if it is, ignore it (workaround for user is to move movies out to a separate import directory that Plex can read an import as Movie content vs. TV Show content
 		category = show.get('ShowCategoriesString')
 		if(category.find("Movie")>=0 or category.find("Movies")>=0 or category.find("Film")>=0):
-			startTime = float(show.get('OriginalAiringDate') // 1000)
-			airDate = date.fromtimestamp(startTime)
-			results.Append(MetadataSearchResult(id=str(mf.get('MediaFileID')), name=unquotedFilepathAndName, score=100, lang=lang, year=airDate.year))
+			results.Append(MetadataSearchResult(id=str(mf.get('MediaFileID')), name=unquotedFilepathAndName, score=100, lang=lang, year=media.year))
 		else:
 			Log.Debug('***Movies/Movies/Film NOT found, ignoring and will not call update; categorylist=%s' % category)
 
@@ -214,5 +212,5 @@ class BMTAgent(Agent.Movies):
 			metadata.directors.add(stars[i])
 		i = i+1
 	
-	Log.Debug("Metadata that was set includes: metadata.title=%s;metadata.summary=%s;metadata.originally_available_at=%s;metadata.duration=%s;metadata.content_rating=%s;" % (metadata.title, metadata.summary, metadata.originally_available_at, metadata.duration, metadata.content_rating))
+	Log.Debug("Metadata that was set includes: metadata.title=%s;metadata.summary=%s;metadata.originally_available_at=%s;metadata.duration=%s;metadata.content_rating=%s;metadata.year=%s;" % (metadata.title, metadata.summary, metadata.originally_available_at, metadata.duration, metadata.content_rating, metadata.year))
 
