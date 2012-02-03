@@ -66,11 +66,11 @@ def readPropertiesFromPropertiesFile():
 		Log.Debug('***cwdddddddddddd=%s' % cwd)
 		if(cwd.find("\\") >=0): #backslashes are typically from windows machines
 			cwd = cwd.replace("\\\\?\\", "")
-			cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagent", "Plug-ins\\BMTAgentTVShows.bundle\\Contents\\Code\\")
+			cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagenttvshows", "Plug-ins\\BMTAgentTVShows.bundle\\Contents\\Code\\")
 		elif(len(cwd) == 1): #for some reason on Macs, CWD returns just a forward slash /
 			cwd = "~/Library/Application Support/Plex Media Server/Plug-ins/BMTAgentTVShows.bundle/Contents/Code/"
 		elif(cwd.find("/") >=0): #forward slashes are typically from non-windows machines
-			cwd = cwd.replace("Plug-in Support/Data/com.plexapp.agents.bmtagent", "Plug-ins/BMTAgentTVShows.bundle/Contents/Code/")
+			cwd = cwd.replace("Plug-in Support/Data/com.plexapp.agents.bmtagenttvshows", "Plug-ins/BMTAgentTVShows.bundle/Contents/Code/")
 
 		propertiesFilePath = cwd + "BMTAgent.properties"
 		Log.Debug('***propertiesFilePath=%s' % propertiesFilePath)
@@ -137,6 +137,7 @@ class BMTAgent(Agent.TV_Shows):
 		
   def search(self, results, media, lang, manual):
 	#filename = media.items[0].parts[0].file.decode('utf-8')
+	Log.Debug("****STARTTTTTTTT")
 	if(not readPropertiesFromPropertiesFile()):
 		Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
 	
@@ -200,14 +201,13 @@ class BMTAgent(Agent.TV_Shows):
 	poster_url = SAGEX_HOST + '/sagex/media/poster/%s' % mediaFileID
 	banner_url = SAGEX_HOST + '/sagex/media/banner/%s' % mediaFileID
 
-	metadata.art[background_url] = Proxy.Media(getFanart(background_url))
-	metadata.posters[poster_url] = Proxy.Media(getFanart(poster_url))
-	metadata.banners[banner_url] = Proxy.Media(getFanart(banner_url))
-	
-	# If we haven't added this poster.
-	#if poster_url not in metadata.posters:
-		# Add the poster.
-		#metadata.posters[poster_url] = Proxy.Media(data)
+	#First check if the poster is already assigned before adding it again
+	if poster_url not in metadata.posters:
+		metadata.posters[poster_url] = Proxy.Media(getFanart(poster_url))
+	if background_url not in metadata.art:
+		metadata.art[background_url] = Proxy.Media(getFanart(background_url))
+	if banner_url not in metadata.banners:
+		metadata.banners[banner_url] = Proxy.Media(getFanart(banner_url))
 
 	# Set the Episode's metadata
 	s = str(show.get('ShowSeasonNumber')) # must convert to string or else Plex throws a serialization exception
@@ -233,12 +233,16 @@ class BMTAgent(Agent.TV_Shows):
 	for star in stars:
 		Log.Debug("star=%s" % star)
 		episode.guest_stars.add(star)
-	
-	season.posters[poster_url] = Proxy.Media(getFanart(poster_url))
-	season.banners[banner_url] = Proxy.Media(getFanart(banner_url))
 
 	thumb_url = SAGEX_HOST + '/sagex/media/thumbnail/%s' % mediaFileID
-	episode.thumbs[thumb_url] = Proxy.Media(getFanart(thumb_url))
+
+	#First check if the poster is already assigned before adding it again
+	if poster_url not in season.posters:
+		season.posters[poster_url] = Proxy.Media(getFanart(poster_url))
+	if banner_url not in season.banners:
+		season.banners[banner_url] = Proxy.Media(getFanart(banner_url))
+	if thumb_url not in episode.thumbs:
+		episode.thumbs[thumb_url] = Proxy.Media(getFanart(thumb_url))
 	
 	#Log.Debug('*** callingggggggg: id=%s' % media.id)
 	#setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
