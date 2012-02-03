@@ -178,7 +178,6 @@ class BMTAgent(Agent.Movies):
 	airDate = date.fromtimestamp(startTime)
 	Log.Debug('***airDate=%s' % str(airDate))
 	metadata.originally_available_at = airDate
-	metadata.year = airDate.year
 	
 	metadata.studio = airing.get('AiringChannelName')
 	
