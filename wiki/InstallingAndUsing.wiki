@@ -62,10 +62,12 @@ Note: the Jetty Web Server is installed as a part of installing the sagex-servic
 The following folder/files will be installed:
 {{{
 Scanner
+--Movies
+----SageTV Movie Scanner.py
 --Series
 ----simplejson
 ------files
-----SageTVScanner.py
+----SageTV Scanner.py
 Plug-ins
 --BMTAgent.bundle
 ----Contents
