@@ -113,6 +113,7 @@ Update each with the correct IP address:
 
 Once all the files have been installed, use the Plex Media Manager to add a new "section", containing SageTV recordings.
 
+=== Set Up TV Shows for Scanning ===
   * Using your browser, navigate to the Plex Media Manager page
     e.g. http://localhost:32400/manage/index.html if accessing the manager from the same computer that Plex Media Server was installed.
   * Click on "TV Shows"
@@ -152,13 +153,21 @@ From a Plex client, this new section will show up with the same name assigned to
 
 http://farm8.staticflickr.com/7157/6783079913_7eafa482d8_b.jpg
 
+=== Set up Scanning for Movies
+
+Use the same steps to:
+
+  * Add a new section, selecting Movies
+  * Add the SageTV recording folder(s)
+  * Use the Advanced button and 
+    * Select SageTV Movie Scanner for the Media Scanner
+    * Keep the default Freebase for the Primary Metadata Agent
+  * Click Add Section and Plex will be immediately begin scanning the SageTV recordings folder(s) for movies!
+
+
 == How to Apply Updates ==
 
 (forthcoming)
-
-== Not Currently Supported ==
-
-  * Movie scanning is not yet supported but should be available in a future update
 
 == Troubleshooting ==
 
