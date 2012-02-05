@@ -27,7 +27,7 @@
 
 == Introduction==
 
-This document will not cover specific steps on how to install the SageTV Server or the Plex Media Server. It is also assumed that the user is somewhat familiar with the [http:// Plex Media Manager] (browser-based access to the Plex media library / database).
+This document will not cover specific steps on how to install the SageTV Server or the Plex Media Server. It is also assumed that the user is somewhat familiar with the [http://plexapp.com/medialink/files/E_use1.html# Plex Media Manager] (browser-based access to the Plex media library / database).
 
 == Installation ==
 === Installing sagex-services plugin for SageTV Server ===
