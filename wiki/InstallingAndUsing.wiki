@@ -153,7 +153,7 @@ From a Plex client, this new section will show up with the same name assigned to
 
 http://farm8.staticflickr.com/7157/6783079913_7eafa482d8_b.jpg
 
-=== Set up Scanning for Movies
+=== Set up Scanning for Movies ===
 
 Use the same steps to:
 
