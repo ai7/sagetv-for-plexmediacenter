@@ -94,7 +94,7 @@ Two files in the Plex Media Server will need to be updated manually with the loc
   # Plug-ins\BMTAgent.bundle\Contents\Code\BMTAgent.properties
   # Scanners\Series\SageTV Scanner.py
 
-Update each with the correct IP address:
+Update each of the following files with the correct IP address:
 
 *BMTAgent.properties*, update the SAGEX_HOST line:
   * SAGEX_HOST=http://user:pass@IPAddress:PortNo
@@ -104,7 +104,11 @@ Update each with the correct IP address:
   * SAGEX_HOST = 'http://user:pass@IPAdress:PortNo'
     e.g. 'http://sage:frey@192.168.1.12:8080'
 
-    NOTE: *in the second file, single quotes are needed*
+*SageTV Movie Scanner.py*, update the SAGEX_HOST line:
+  * SAGEX_HOST = 'http://user:pass@IPAdress:PortNo'
+    e.g. 'http://sage:frey@192.168.1.12:8080'
+
+    NOTE: *in the scanner files, single quotes are needed*
 
     NOTE: only use user:pass in the URL if your web server is password protected. You can test access via: 
     http://IPAddress:PortNo/sagex/api
