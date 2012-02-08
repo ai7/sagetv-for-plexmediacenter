@@ -138,7 +138,7 @@ def Scan(path, files, mediaList, subdirs):
               airDate = date.fromtimestamp(startTime)
               #print "****** showYear = %s" % showYear
               print "****** S_num isnt set and = %s. using showyear which = %s" % (s_num,airDate.year)
-              tv_show = Media.Episode(showTitle, airDate.year, None, None, None)
+              tv_show = Media.Episode(showTitle, airDate.year, None, episodeTitle, None)
             else:
               tv_show = Media.Episode(showTitle,s_num, ep_num,episodeTitle, showYear)
 		    #print "MREID - TVShow = %s" % tv_show
