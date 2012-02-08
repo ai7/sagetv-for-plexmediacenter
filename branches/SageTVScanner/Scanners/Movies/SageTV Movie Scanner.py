@@ -37,33 +37,33 @@ def Scan(path, files, mediaList, subdirs):
   for i in files:
     file = os.path.basename(i)
     (file, ext) = os.path.splitext(file)
-    print "File name = %s" % file
-    print "File ext = %s" % ext
-    print "File name = %s" % file
+    print "*** Found File name = %s%s, Start looking for metadata" % (file,ext)
     #if the extension is in our list of acceptable sagetv file extensions, then process
     if ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts']:
       mf = getMediaFileForFilePath(urllib.quote(file + ext))
       if(mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
         airing = mf.get('Airing')
         showMF = airing.get('Show')
-        category = showMF.get('ShowCategoriesString')
-        showTitle = showMF.get('ShowTitle').encode('UTF-8')
-        showYear = showMF.get('ShowYear').encode('UTF-8')
-        if(showYear == None or showYear == ""):
-          showYear = ''
-        
-        test = category.find("Movie")
-        print "test = %s" % test
-        if(category.find("Movie")>=0 or category.find("Movies")>=0 or category.find("Film")>=0):
-          movie = Media.Movie(showTitle, showYear)
-          movie.source = VideoFiles.RetrieveSource(file)
-          movie.parts.append(i)
-          mediaList.append(movie)
-          # Stack the results.
-          Stack.Scan(path, files, mediaList, subdirs)
+        if (showMF):
+          category = showMF.get('ShowCategoriesString')
+          showTitle = showMF.get('ShowTitle').encode('UTF-8')
+          showYear = showMF.get('ShowYear').encode('UTF-8')
+          if(showYear == None or showYear == ""):
+            showYear = ''
+          if(category.find("Movie")>=0 or category.find("Movies")>=0 or category.find("Film")>=0):
+            movie = Media.Movie(showTitle, showYear)
+            movie.source = VideoFiles.RetrieveSource(file)
+            movie.parts.append(i)
+            mediaList.append(movie)
+            # Stack the results.
+            Stack.Scan(path, files, mediaList, subdirs)
+            print "****** Current file (%s%s) successfully added to stack!" % (file,ext)
+          else:
+            print "****** Current file (%s%s) is a TVShow" % (file,ext)
         else:
-          print "Current file is a TVShow"
-		  
+          print "****** Current file (%s%s) did not return a valid MEdiaFile Object from BMT" % (file,ext)
+      else:
+        print "****** Current file (%s%s) was not found in BMT!)" % (file,ext)
     else:
       print "******NO MATCH FOUND BY SCANNER!"
 
