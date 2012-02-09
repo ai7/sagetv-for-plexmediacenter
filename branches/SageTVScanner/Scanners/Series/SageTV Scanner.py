@@ -135,7 +135,7 @@ def Scan(path, files, mediaList, subdirs):
           if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
             if (s_num == "0"):
               startTime = float(showMF.get('OriginalAiringDate') // 1000)
-              if (startTime):
+              if (startTime > 0):
                 airDate = date.fromtimestamp(startTime)
                 print "****** S_num isnt set and = %s. using showyear which = %s" % (s_num,airDate.year)
                 tv_show = Media.Episode(showTitle, airDate.year, None, episodeTitle, None)
