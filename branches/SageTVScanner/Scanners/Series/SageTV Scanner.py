@@ -114,9 +114,19 @@ def Scan(path, files, mediaList, subdirs):
           if( episodeTitle == None or episodeTitle == ""):
             episodeTitle = showTitle
       
+          #Try and get show year, if show year is blank, then try using original airdate, if originalairdate is blank use recordeddate year
           showYear = showMF.get('ShowYear').encode('UTF-8')
           if(showYear == None or showYear == ""):
-            showYear = ""
+            startTime = float(showMF.get('OriginalAiringDate') // 1000)
+            recordTime = float(airing.get('AiringStartTime') // 1000)
+            if (startTime > 0):
+              airDate = date.fromtimestamp(startTime)
+              showYear = airDate.year
+            elif (recordTime > 0):
+                airDate = date.fromtimestamp(recordTime)
+                showYear = airDate.year
+            else:
+              showYear = "2012"
 		
           s_num = str(showMF.get('ShowSeasonNumber')) # must convert to string or else Plex throws a serialization exception
           ep_num = str(showMF.get('ShowEpisodeNumber')) # must convert to string or else Plex throws a serialization exception
@@ -130,17 +140,11 @@ def Scan(path, files, mediaList, subdirs):
           if(ep_num == None or ep_num == ""):
             ep_num = "0"
             
-          print "****** S_num = %s." % s_num
+          #print "****** S_num = %s." % s_num
         
           if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
             if (s_num == "0"):
-              startTime = float(showMF.get('OriginalAiringDate') // 1000)
-              if (startTime > 0):
-                airDate = date.fromtimestamp(startTime)
-                print "****** S_num isnt set and = %s. using showyear which = %s" % (s_num,airDate.year)
-                tv_show = Media.Episode(showTitle, airDate.year, None, episodeTitle, None)
-              else:
-                tv_show = Media.Episode(showTitle, s_num, ep_num, episodeTitle, None)
+              tv_show = Media.Episode(showTitle, showYear, None, episodeTitle, showYear)
             else:
               tv_show = Media.Episode(showTitle,s_num, ep_num,episodeTitle, showYear)
 		    #print "MREID - TVShow = %s" % tv_show
