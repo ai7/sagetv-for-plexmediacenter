@@ -121,32 +121,34 @@ def Scan(path, files, mediaList, subdirs):
             recordTime = float(airing.get('AiringStartTime') // 1000)
             if (startTime > 0):
               airDate = date.fromtimestamp(startTime)
-              showYear = airDate.year
+              showYear = int(airDate.year)
             elif (recordTime > 0):
                 airDate = date.fromtimestamp(recordTime)
-                showYear = airDate.year
+                showYear = int(airDate.year)
             else:
-              showYear = "2012"
+              showYear = 2012
+          else:
+		    showYear = int(showYear)
 		
-          s_num = str(showMF.get('ShowSeasonNumber')) # must convert to string or else Plex throws a serialization exception
-          ep_num = str(showMF.get('ShowEpisodeNumber')) # must convert to string or else Plex throws a serialization exception
+          s_num = int(showMF.get('ShowSeasonNumber')) # must convert to string or else Plex throws a serialization exception
+          ep_num = int(showMF.get('ShowEpisodeNumber')) # must convert to string or else Plex throws a serialization exception
           #print "Sage show = %s" % s_num
           #print "Sage Episode = %s" % ep_num          
           #print "Sage Show name = %s" % showTitle
           #print "Sage Episode name = %s" % episodeTitle
       
           if(s_num == None or s_num == ""): # if there is no season or episode number, default it to 0 so that Plex can still pull it in
-            s_num = "0"
+            s_num = 0
           if(ep_num == None or ep_num == ""):
-            ep_num = "0"
+            ep_num = 0
             
           #print "****** S_num = %s." % s_num
         
           if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
-            if (s_num == "0"):
-              tv_show = Media.Episode(showTitle, showYear, None, episodeTitle, showYear)
+            if (s_num == 0):
+              tv_show = Media.Episode(showTitle, showYear, None, episodeTitle, None)
             else:
-              tv_show = Media.Episode(showTitle,s_num, ep_num,episodeTitle, showYear)
+              tv_show = Media.Episode(showTitle,s_num, ep_num,episodeTitle, None)
 		    #print "MREID - TVShow = %s" % tv_show
             tv_show.display_offset = 0
             tv_show.parts.append(i)
