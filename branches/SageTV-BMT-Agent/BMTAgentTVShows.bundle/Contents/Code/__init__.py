@@ -179,14 +179,16 @@ class BMTAgent(Agent.TV_Shows):
 	Log.Debug('***UPDATE CALLEDDDDDDDDDDDDDDDDDDDDDDDD')
 	mfid = str(metadata.id)
 	mf = getMediaFileForID(mfid)
-	showExternalID = mf.get('Airing').get('Show').get('ShowExternalID')
+	airing = mf.get('Airing')
+	show = airing.get('Show')
+	showExternalID = show.get('ShowExternalID')
 	
 	series = getShowSeriesInfo(showExternalID)
 
 	#Set the Show level metadata
 	if(series):
 		Log.Debug("series=%s" % str(series))
-		metadata.title = series.get('SeriesTitle')
+		metadata.title = show.get('ShowTitle')
 		metadata.title_sort = metadata.title
 		metadata.summary = series.get('SeriesDescription')
 		seriesPremiere = series.get('SeriesPremiereDate')
@@ -200,8 +202,6 @@ class BMTAgent(Agent.TV_Shows):
 		metadata.genres.add(cats)
 	else: #No series object exists, pull from the mediafile object
 		Log.Debug("SERIES INFO NOT FOUND; PULLING SERIES LEVEL METADATA FROM THE MEDIAFILE OBJECT INSTEAD")
-		airing = mf.get('Airing')
-		show = airing.get('Show')
 		metadata.title = show.get('ShowTitle')
 		metadata.title_sort = metadata.title
 		metadata.studio = airing.get('AiringChannelName')
@@ -217,69 +217,70 @@ class BMTAgent(Agent.TV_Shows):
 		season = metadata.seasons[seasonNum]
 		for episodeNum in media.seasons[seasonNum].episodes:
 			Log.Debug("LOOKING FOR METADATA FOR metadata.seasons[%s].episodes[%s]" % (seasonNum, episodeNum))
-			if(episodeNum):
-				episode = metadata.seasons[seasonNum].episodes[episodeNum]
-				for mf in mfs:
-					mediaFileID = mf.get('MediaFileID')
-					airing = mf.get('Airing')
-					if(airing):
-						show = airing.get('Show')
-						if(show):
-							plexFilename = getFilenameOnly(media.seasons[seasonNum].episodes[episodeNum].items[0].parts[0].file)
-							mfFilenames = mf.get('SegmentFiles')
-							for mfFilename in mfFilenames:
-								mfFilename = getFilenameOnly(mfFilename)
-								Log.Debug("mfFilename=%s;plexFilename=%s" % (str(mfFilename), plexFilename))
-								if(plexFilename == mfFilename):
-									Log.Debug("SHOW OBJECT FOR MATCHED SHOW: %s" % str(show))
-									Log.Debug("UPDATING METADATA FOR SEASON: %s; EPISODE: %s" % (seasonNum, episodeNum))
-									startTime = float(show.get('OriginalAiringDate') // 1000)
-									airDate = date.fromtimestamp(startTime)
+			episode = metadata.seasons[seasonNum].episodes[episodeNum]
+			for mf in mfs:
+				mediaFileID = mf.get('MediaFileID')
+				airing = mf.get('Airing')
+				if(airing):
+					show = airing.get('Show')
+					if(show):
+						plexFilename = getFilenameOnly(media.seasons[seasonNum].episodes[episodeNum].items[0].parts[0].file)
+						mfFilenames = mf.get('SegmentFiles')
+						for mfFilename in mfFilenames:
+							mfFilename = getFilenameOnly(mfFilename)
+							Log.Debug("mfFilename=%s;plexFilename=%s" % (str(mfFilename), plexFilename))
+							if(plexFilename == mfFilename):
+								Log.Debug("SHOW OBJECT FOR MATCHED SHOW: %s" % str(show))
+								Log.Debug("UPDATING METADATA FOR SEASON: %s; EPISODE: %s" % (seasonNum, episodeNum))
+								startTime = float(show.get('OriginalAiringDate') // 1000)
+								airDate = date.fromtimestamp(startTime)
 
-									episode.title = show.get('ShowEpisode')
-									episode.summary = show.get('ShowDescription')
-									episode.originally_available_at = airDate
-									episode.duration = mf.get('FileDuration')
-									episode.season = int(seasonNum)
+								episode.title = show.get('ShowEpisode')
+								if(episode.title == None or episode.title == ""):
+									episode.title = show.get('ShowTitle')
+								episode.summary = show.get('ShowDescription')
+								episode.originally_available_at = airDate
+								episode.duration = mf.get('FileDuration')
+								episode.season = int(seasonNum)
 
-									stars = show.get('PeopleListInShow')
-									episode.guest_stars.clear()
-									for star in stars:
-										episode.guest_stars.add(star)
+								stars = show.get('PeopleListInShow')
+								episode.guest_stars.clear()
+								for star in stars:
+									episode.guest_stars.add(star)
 
-									background_url = SAGEX_HOST + '/sagex/media/background/%s' % mediaFileID
-									poster_url = SAGEX_HOST + '/sagex/media/poster/%s' % mediaFileID
-									banner_url = SAGEX_HOST + '/sagex/media/banner/%s' % mediaFileID
-									thumb_url = SAGEX_HOST + '/sagex/media/thumbnail/%s' % mediaFileID
+								background_url = SAGEX_HOST + '/sagex/media/background/%s' % mediaFileID
+								poster_url = SAGEX_HOST + '/sagex/media/poster/%s' % mediaFileID
+								banner_url = SAGEX_HOST + '/sagex/media/banner/%s' % mediaFileID
+								thumb_url = SAGEX_HOST + '/sagex/media/thumbnail/%s' % mediaFileID
 
-									#First check if the poster is already assigned before adding it again
-									if poster_url not in metadata.posters:
-										metadata.posters[poster_url] = Proxy.Media(getFanart(poster_url))
-									if background_url not in metadata.art:
-										metadata.art[background_url] = Proxy.Media(getFanart(background_url))
-									if banner_url not in metadata.banners:
-										metadata.banners[banner_url] = Proxy.Media(getFanart(banner_url))
+								#First check if the poster is already assigned before adding it again
+								if poster_url not in metadata.posters:
+									metadata.posters[poster_url] = Proxy.Media(getFanart(poster_url))
+								if background_url not in metadata.art:
+									metadata.art[background_url] = Proxy.Media(getFanart(background_url))
+								if banner_url not in metadata.banners:
+									metadata.banners[banner_url] = Proxy.Media(getFanart(banner_url))
 
-									#Set season and episode level fanart
-									#First check if the poster is already assigned before adding it again
-									if poster_url not in season.posters:
-										season.posters[poster_url] = Proxy.Media(getFanart(poster_url))
-									if banner_url not in season.banners:
-										season.banners[banner_url] = Proxy.Media(getFanart(banner_url))
-									if thumb_url not in episode.thumbs:
-										episode.thumbs[thumb_url] = Proxy.Media(getFanart(thumb_url))
-									
-									showRated = show.get('ShowRated')
-									if(showRated.find("TV") >= 0):
-										metadata.content_rating = showRated.replace("TV", "TV-")
-									
-									#Log.Debug('*** callingggggggg: id=%s' % media.id)
-									#setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
-									#episode.writers = 
-									#episode.directors = 
-									#episode.producers = 
-									#episode.rating = 
-									
-									Log.Debug("COMPLETED SETTING EPISODE-LEVEL METADATA FOR SEASON: %s; EPISODE: %s;;;;episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;metadata.content_rating=%s;" % (seasonNum, episodeNum, episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, metadata.content_rating))
-									
-									break
+								#Set season and episode level fanart
+								#First check if the poster is already assigned before adding it again
+								if poster_url not in season.posters:
+									season.posters[poster_url] = Proxy.Media(getFanart(poster_url))
+								if banner_url not in season.banners:
+									season.banners[banner_url] = Proxy.Media(getFanart(banner_url))
+								if thumb_url not in episode.thumbs:
+									episode.thumbs[thumb_url] = Proxy.Media(getFanart(thumb_url))
+								
+								showRated = show.get('ShowRated')
+								if(showRated.find("TV") >= 0):
+									metadata.content_rating = showRated.replace("TV", "TV-")
+								
+								#Log.Debug('*** callingggggggg: id=%s' % media.id)
+								#setWatchedUnwatchedFlag(str(media.seasons[s].episodes[e].id), airing.get('IsWatched'))
+								#episode.writers = 
+								#episode.directors = 
+								#episode.producers = 
+								#episode.rating = 
+								
+								Log.Debug("COMPLETED SETTING EPISODE-LEVEL METADATA FOR SEASON: %s; EPISODE: %s;;;;episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;metadata.content_rating=%s;" % (seasonNum, episodeNum, episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, metadata.content_rating))
+								
+								break
