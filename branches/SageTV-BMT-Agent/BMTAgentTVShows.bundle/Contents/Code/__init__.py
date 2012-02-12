@@ -48,18 +48,12 @@ def getShowSeriesInfo(showExternalID):
 	resp = executeSagexAPICall(url, 'SeriesInfo')
 	return resp
   
-def getSeriesInfoForID(seriesID):
-	url = SAGEX_HOST + '/sagex/api?c=GetSeriesInfoForID&1=%s&encoder=json' % seriesID
-	resp = executeSagexAPICall(url, 'SeriesInfo')
-	return resp
-  
-def getMediaFileObjectsForSeriesID(seriesID):
-	url = SAGEX_HOST + '/sagex/api?c=GetMediaFiles&encoder=json'
-	return executeSagexAPICall(url, 'Result')
-  
 def getMediaFilesForShow(showName):
 	parameter = ', "GetShowTitle", "%s", ' % showName
+	url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles()%strue)&encoder=json' % parameter
+	Log.Debug("UNQUOTED getMediaFilesForShow URL=%s" % url)
 	url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles()%strue)&encoder=json' % urllib.quote(parameter)
+	Log.Debug("QUOTED getMediaFilesForShow URL=%s" % url)
 	return executeSagexAPICall(url, 'Result')
   
 def getMediaFileForID(mediaFileID):
@@ -176,19 +170,22 @@ class BMTAgent(Agent.TV_Shows):
 		if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
 			startTime = float(show.get('OriginalAiringDate') // 1000)
 			airDate = date.fromtimestamp(startTime)
-			showExternalID = show.get('ShowExternalID')
-			results.Append(MetadataSearchResult(id=showExternalID, name=media.show, score=100, lang=lang, year=airDate.year))
+			mfid = str(mf.get('MediaFileID'))
+			results.Append(MetadataSearchResult(id=mfid, name=media.show, score=100, lang=lang, year=airDate.year))
 		else:
 			Log.Debug('***Movies/Movies/Film found, ignoring and will not call update; categorylist=%s' % category)
 
   def update(self, metadata, media, lang, force):
 	Log.Debug('***UPDATE CALLEDDDDDDDDDDDDDDDDDDDDDDDD')
-	showExternalID = str(metadata.id)
+	mfid = str(metadata.id)
+	mf = getMediaFileForID(mfid)
+	showExternalID = mf.get('ShowExternalID')
 	
 	series = getShowSeriesInfo(showExternalID)
 
 	#Set the Show level metadata
 	if(series):
+		Log.Debug("series=%s" % str(series))
 		metadata.title = series.get('SeriesTitle')
 		metadata.title_sort = metadata.title
 		metadata.summary = series.get('SeriesDescription')
@@ -197,13 +194,20 @@ class BMTAgent(Agent.TV_Shows):
 		airDate = datetime.datetime.strptime(seriesPremiere, '%Y-%m-%d')
 		Log.Debug('***airDate=%s' % str(airDate))
 		metadata.originally_available_at = airDate
-		metadata.studio = series.get('SeriesNetwork')	
+		metadata.studio = series.get('SeriesNetwork')
 		cats = series.get('SeriesCategory')
 		metadata.genres.clear()
 		metadata.genres.add(cats)
-	#else:
-		#metadata.title = metadata.SOMETHING??
-		#metadata.title_sort = metadata.title
+	else: #No series object exists, pull from the mediafile object
+		Log.Debug("SERIES INFO NOT FOUND; PULLING SERIES LEVEL METADATA FROM THE MEDIAFILE OBJECT INSTEAD")
+		airing = mf.get('Airing')
+		show = airing.get('Show')
+		metadata.title = show.get('ShowTitle')
+		metadata.title_sort = metadata.title
+		metadata.studio = airing.get('AiringChannelName')
+		cats = show.get('ShowCategoriesString')
+		metadata.genres.clear()
+		metadata.genres.add(cats)
 		
 	# Set the metadata for all episode's in each of the season's
 	mfs = getMediaFilesForShow(metadata.title)
