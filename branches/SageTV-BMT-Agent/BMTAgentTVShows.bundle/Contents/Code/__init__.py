@@ -50,9 +50,9 @@ def getShowSeriesInfo(showExternalID):
   
 def getMediaFilesForShow(showName):
 	parameter = ', "GetShowTitle", "%s", ' % showName
-	url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles()%strue)&encoder=json' % parameter
+	url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles("T")%strue)&encoder=json' % parameter
 	Log.Debug("UNQUOTED getMediaFilesForShow URL=%s" % url)
-	url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles()%strue)&encoder=json' % urllib.quote(parameter)
+	url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles("T")%strue)&encoder=json' % urllib.quote(parameter)
 	Log.Debug("QUOTED getMediaFilesForShow URL=%s" % url)
 	return executeSagexAPICall(url, 'Result')
   
@@ -179,7 +179,7 @@ class BMTAgent(Agent.TV_Shows):
 	Log.Debug('***UPDATE CALLEDDDDDDDDDDDDDDDDDDDDDDDD')
 	mfid = str(metadata.id)
 	mf = getMediaFileForID(mfid)
-	showExternalID = mf.get('ShowExternalID')
+	showExternalID = mf.get('Airing').get('Show').get('ShowExternalID')
 	
 	series = getShowSeriesInfo(showExternalID)
 
@@ -209,6 +209,8 @@ class BMTAgent(Agent.TV_Shows):
 		metadata.genres.clear()
 		metadata.genres.add(cats)
 		
+	Log.Debug("COMPLETED SETTING SERIES-LEVEL METADATA;metadata.title=%s;metadata.summary=%s;metadata.originally_available_at=%s;metadata.studio=%s" % (metadata.title, metadata.summary, metadata.originally_available_at, metadata.studio))
+
 	# Set the metadata for all episode's in each of the season's
 	mfs = getMediaFilesForShow(metadata.title)
 	for seasonNum in media.seasons:
@@ -278,6 +280,6 @@ class BMTAgent(Agent.TV_Shows):
 									#episode.producers = 
 									#episode.rating = 
 									
-									Log.Debug("Metadata that was set includes: episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;metadata.content_rating=%s;" % (episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, metadata.content_rating))
+									Log.Debug("COMPLETED SETTING EPISODE-LEVEL METADATA FOR SEASON: %s; EPISODE: %s;;;;episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;metadata.content_rating=%s;" % (seasonNum, episodeNum, episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, metadata.content_rating))
 									
 									break
