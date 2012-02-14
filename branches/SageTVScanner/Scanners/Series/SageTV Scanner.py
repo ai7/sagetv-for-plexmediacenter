@@ -146,7 +146,7 @@ def Scan(path, files, mediaList, subdirs):
         
           if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
             if (s_num == 0):
-              tv_show = Media.Episode(showTitle, showYear, None, episodeTitle, None)
+              tv_show = Media.Episode(showTitle, showYear, 0, episodeTitle, None)
             else:
               tv_show = Media.Episode(showTitle,s_num, ep_num,episodeTitle, None)
 		    #print "MREID - TVShow = %s" % tv_show
