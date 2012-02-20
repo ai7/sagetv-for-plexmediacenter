@@ -139,14 +139,14 @@ def Scan(path, files, mediaList, subdirs):
       
           if(s_num == None or s_num == ""): # if there is no season or episode number, default it to 0 so that Plex can still pull it in
             s_num = 0
-          if(ep_num == None or ep_num == ""):
-            ep_num = 0
+          if(ep_num == None or ep_num == "" or ep_num == 0):
+            ep_num = int(airing.get('AiringID'))
             
           #print "****** S_num = %s." % s_num
-        
+          #print "****** new Ep Num = %s" % ep_num
           if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
             if (s_num == 0):
-              tv_show = Media.Episode(showTitle, showYear, 0, episodeTitle, None)
+              tv_show = Media.Episode(showTitle, showYear, ep_num, episodeTitle, None)
             else:
               tv_show = Media.Episode(showTitle,s_num, ep_num,episodeTitle, None)
 		    #print "MREID - TVShow = %s" % tv_show
