@@ -94,6 +94,7 @@ def Scan(path, files, mediaList, subdirs):
   # loop used to interate over all files found in VideoFiles.Scan above
   for i in files:
     file = os.path.basename(i)
+    fullfilename = file
     (file, ext) = os.path.splitext(file)
     #print "File name = %s" % file
     #print "File ext = %s" % ext
@@ -146,16 +147,49 @@ def Scan(path, files, mediaList, subdirs):
           #print "****** new Ep Num = %s" % ep_num
           if(category.find("Movie")<0 and category.find("Movies")<0 and category.find("Film")<0):
             if (s_num == 0):
-              tv_show = Media.Episode(showTitle, showYear, ep_num, episodeTitle, None)
+              s_num = showYear
+              tv_show = Media.Episode(showTitle, s_num, ep_num, episodeTitle, None)
             else:
               tv_show = Media.Episode(showTitle,s_num, ep_num,episodeTitle, None)
 		    #print "MREID - TVShow = %s" % tv_show
             tv_show.display_offset = 0
-            tv_show.parts.append(i)
-            mediaList.append(tv_show)
-            # Stack the results.
-            Stack.Scan(path, files, mediaList, subdirs)
-            print "****** Current file (%s%s) successfully added to stack!" % (file,ext)
+            #need to handle mutliple recordings for the same physical show i.e. -0.mpg, -1.mpg, -2.mpg
+            valid = 0
+            if (mf.get('NumberOfSegments') > 1):
+              # x = Saturtday Night Live (season 01, Episode 27) => ['path']
+              counter = 0
+              for value in mediaList:
+                if (value.show == showTitle and value.name == episodeTitle and value.season == s_num and value.episode == ep_num):
+                  if (value.parts[0] < i):
+                    print "*** value.parts[0] less than currnet file.  Current file goes at [1]. [0] = %s" % mediaList[counter].parts[0]
+                    mediaList[counter].parts.append(i)
+                    valid = 1
+                    print "*** new mediaList = %s" % mediaList
+                    break
+                  elif (value.parts[0] > i):
+                    print "*** value.parts[0] greater than current file.  Set [1] = [0] and [0] = i"
+                    mediaList[counter].parts.insert(0,i)
+                    valid = 1
+                    break
+                #Current show not yet found increment and continue
+                counter += 1
+              #END FOR
+              #We have a file with mutliple segments, and looped through entire mediaList. Not current in mediaList so add
+              if (valid == 0):
+                print "***** We have a file with mutliple parts in bmt, but not currently in media list. Adding to mediaLiost"
+                tv_show.parts.append(i)
+            #Show only has 1 segment. Append
+            else:
+              print "Current file only has 1 segments. Append to mediaList"
+              tv_show.parts.append(i)
+            if valid == 0:
+              print "***** Appending show to mediaList"
+              mediaList.append(tv_show)
+              # Stack the results.
+              Stack.Scan(path, files, mediaList, subdirs)
+              print "****** Current file (%s%s) successfully added to stack!" % (file,ext)
+            else:
+              print "****** File not added to stack (%s%s)" % (file,ext)
           else:
             print "****** Current file (%s%s) is a Movie or Film! Removing from scanner" % (file,ext)
         else:
