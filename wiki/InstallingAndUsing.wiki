@@ -89,10 +89,11 @@ Install the plex.js file on the SageTV server:
 
 == Configuration ==
 
-Two files in the Plex Media Server will need to be updated manually with the location of the SageTV server:
+Three files in the Plex Media Server will need to be updated manually with the location of the SageTV server:
 
   # Plug-ins\BMTAgent.bundle\Contents\Code\BMTAgent.properties
   # Scanners\Series\SageTV Scanner.py
+  # Scanners\Movies\SageTV Movie Scanner.py
 
 Update each of the following files with the correct IP address:
 
@@ -171,7 +172,16 @@ Use the same steps to:
 
 == How to Apply Updates ==
 
-(forthcoming)
+The process is slightly cumbersome but it ensures that the Plex Media Server database doesn't get corrupted and that the metadata related to your SageTV recordings is stored in the PMS database correctly.
+
+  * From the Plex Media Manger web page, remove the sections that have your SageTV content
+  * Shutdown the Plex Media Server
+  * Download and unzip the new files per the original installation instructions near the beginning of this document. 
+
+*Note*: Remember to update the three files with the correct SAGEX_HOST hostname, etc.
+
+  * Start up the Plex Media Server
+  * Re-add your TV and Movies sections as before and Plex will re-scan your SageTV content using the updated scanners / agents.
 
 == Troubleshooting ==
 
