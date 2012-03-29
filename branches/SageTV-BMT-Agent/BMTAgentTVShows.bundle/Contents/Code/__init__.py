@@ -67,7 +67,7 @@ def getMediaFileForFilePath(filename):
   
 def getFilenameOnly(filepathAndName):
 	if(filepathAndName.find("\\")<0):
-		return filepathAndName[filepathAndName.rfind("//")+1:len(filepathAndName)]
+		return filepathAndName[filepathAndName.rfind("/")+1:len(filepathAndName)]
 	else:
 		return filepathAndName[filepathAndName.rfind("\\")+1:len(filepathAndName)]
 
