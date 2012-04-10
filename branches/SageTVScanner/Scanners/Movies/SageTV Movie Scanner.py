@@ -39,7 +39,7 @@ def Scan(path, files, mediaList, subdirs):
     (file, ext) = os.path.splitext(file)
     print "*** Found File name = %s%s, Start looking for metadata" % (file,ext)
     #if the extension is in our list of acceptable sagetv file extensions, then process
-    if ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts']:
+    if ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts','.txt']:
       mf = getMediaFileForFilePath(urllib.quote(file + ext))
       if(mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
         airing = mf.get('Airing')
