@@ -11,6 +11,8 @@
 
 *SageTV server software* 
   * v7.1.9 installed (no longer available for download)
+*SageTV Batch Metadata Tools (BMT) Web Interface Plug-in*
+  * v4.10 installed (via the SageTV plugins manager)
 *SageTV sagex-services plugin*
   * installed (this will also install the Jetty Web Server if it's not already installed) 
 *SageTV Customer Scanner (for Plex Media Server)*
