@@ -18,7 +18,7 @@ DEFAULT_CHARSET = 'utf-8'
 
 # Enter ip address and port http://x.x.x.x:port
 # or if you server requires user/pass enter http://user:pass@x.x.x.x:port
-SAGEX_HOST = 'http://192.168.1.110:8500'
+SAGEX_HOST = 'http://x.x.x.x:port'
 
 #  
 #  regular expression used to find sagetv recordings in the specified directory
@@ -35,8 +35,8 @@ SAGEX_HOST = 'http://192.168.1.110:8500'
 # Code user for Sagex api calls
 #
 #----------
-def getMediaFileForFilePath(filename):
-	url = SAGEX_HOST + '/sagex/api?c=plex:GetMediaFileForName&1=%s&encoder=json' % filename
+def getMediaFileForFilePath(showname):
+	url = SAGEX_HOST + '/sagex/api?c=plex:GetMediaFileForName&1=%s&encoder=json' % showname
 	#url = 'http://192.168.1.110:8500/sagex/api?c=plex:GetMediaFileForName&1=%s&encoder=json' % filename
 	return executeSagexAPICall(url, 'MediaFile')
 
@@ -81,7 +81,7 @@ def unicodeToStr(obj):
 # Look for episodes.
 def Scan(path, files, mediaList, subdirs):
   # Scan for video files.
-  VideoFiles.Scan(path, files, mediaList, subdirs)
+  VideoFiles.Scan(path, files, mediaList, subdirs, None)
   
   paths = Utils.SplitPath(path)
   
@@ -103,8 +103,8 @@ def Scan(path, files, mediaList, subdirs):
     # If we find a match using the regex above, extract data, create media object, and append to results
     #if match:
     #if the extension is in our list of acceptable sagetv file extensions, then process
-    if ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts', '.txt']:
-      mf = getMediaFileForFilePath(urllib.quote(file + ext))
+    if ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts', '.m4v']:
+      mf = getMediaFileForFilePath(urllib.quote(file))
       if(mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
         airing = mf.get('Airing')
         showMF = airing.get('Show')
@@ -139,8 +139,9 @@ def Scan(path, files, mediaList, subdirs):
           #print "Sage Episode name = %s" % episodeTitle
       
           if(s_num == None or s_num == ""): # if there is no season or episode number, default it to 0 so that Plex can still pull it in
+            ep_num = int(airing.get('AiringID'))
             s_num = 0
-          if(ep_num == None or ep_num == "" or ep_num == 0):
+          elif(ep_num == None or ep_num == "" or ep_num == 0):
             ep_num = int(airing.get('AiringID'))
             
           #print "****** S_num = %s." % s_num

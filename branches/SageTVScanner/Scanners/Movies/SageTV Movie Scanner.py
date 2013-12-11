@@ -18,12 +18,12 @@ DEFAULT_CHARSET = 'UTF-8'
 
 # Enter ip address and port http://x.x.x.x:port
 # or if you server requires user/pass enter http://user:pass@x.x.x.x:port
-SAGEX_HOST = 'http://192.168.1.110:8500'
+SAGEX_HOST = 'http://x.x.x.x:port'
 
 # Look for episodes.
 def Scan(path, files, mediaList, subdirs):
   # Scan for video files.
-  VideoFiles.Scan(path, files, mediaList, subdirs)
+  VideoFiles.Scan(path, files, mediaList, subdirs, None)
   
   paths = Utils.SplitPath(path)
   
@@ -39,7 +39,7 @@ def Scan(path, files, mediaList, subdirs):
     (file, ext) = os.path.splitext(file)
     print "*** Found File name = %s%s, Start looking for metadata" % (file,ext)
     #if the extension is in our list of acceptable sagetv file extensions, then process
-    if ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts','.txt']:
+    if ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts', '.m4v']:
       mf = getMediaFileForFilePath(urllib.quote(file + ext))
       if(mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
         airing = mf.get('Airing')
