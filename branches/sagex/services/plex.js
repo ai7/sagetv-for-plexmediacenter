@@ -1,14 +1,22 @@
 /*
- * Name:        GetMediaFileForName
- * Contributor: PiX64 (reid, michael)
- *              Raymond Chi
+ * Name:         GetMediaFileForName
+ * Contributors: PiX64 (reid, michael)
+ *               Raymond Chi
  *
- * This file implements the GetMediaFileForName() JavaScript function.
+ * This file implements a custom service for Remote Http Api For
+ * SageTV.
  *
- * This function is called from the python side through SageTV's web
+ * The service is called from the python side through SageTV's web
  * interface, enabled via sagex-services and Jetty Web Server plugin.
  *
  * SAGEX_HOST/sagex/api?c=plex:GetMediaFileForName&1=fname&encoder=json
+ *
+ * SageTV API:
+ *   http://download.sage.tv/api/
+ * sagex-services:
+ *   http://code.google.com/p/customsagetv/wiki/SageTVapi
+ * RemoteHttpApiForSageTV
+ *   http://code.google.com/p/customsagetv/wiki/RemoteHttpApiForSageTV
  */
 
 
