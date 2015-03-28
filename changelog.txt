@@ -1,0 +1,16 @@
+                      sagetv-for-plexmediacenter
+                              ChangeLog
+
+
+2015-03-28  Raymond Chi <raychi@gmail.com>
+
+  * Exported project from Google Code to Github
+    from: https://code.google.com/p/sagetv-for-plexmediacenter/
+      to: https://github.com/ai7/sagetv-for-plexmediacenter
+  * sagex\services\plex.js code cleanup:
+      - fixed tab/space so file looks correct everywhere
+      - updated comments to javadoc format
+      - trimmed long lines
+      - fixed loop: continue -> break
+      - fixed outer loop to stop when mediaFile has value
+      - add comments regarding what this file is for

@@ -1,8 +1,19 @@
-// Name:   GetMediaFileForName
-// Author: PiX64 (reid, michael)
+/*
+ * Name:        GetMediaFileForName
+ * Contributor: PiX64 (reid, michael)
+ *              Raymond Chi
+ *
+ * This file implements the GetMediaFileForName() JavaScript function.
+ *
+ * This function is called from the python side through SageTV's web
+ * interface, enabled via sagex-services and Jetty Web Server plugin.
+ *
+ * SAGEX_HOST/sagex/api?c=plex:GetMediaFileForName&1=fname&encoder=json
+ */
+
 
 /**
- * GetMediaFileForName
+ * Return MediaFile obj based on filename
  *
  * Given a filename, will grab all mediafiles from sage, and loop
  * through trying to find a mediafile match for the given name
