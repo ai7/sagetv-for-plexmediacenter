@@ -3,13 +3,19 @@
  * Contributors: PiX64 (reid, michael)
  *               Raymond Chi
  *
- * This file implements a custom service for Remote Http Api For
- * SageTV.
+ * This file implements a custom 'plex' service for Remote HTTP API in
+ * SageTV, enabled via sagex-services and Jetty Web Server plugin.
  *
- * The service is called from the python side through SageTV's web
- * interface, enabled via sagex-services and Jetty Web Server plugin.
+ * The service implements the API 'GetMediaFileForName'. This is
+ * called by the Plex scanner from the python side through sagex's web
+ * interface. 
  *
- * SAGEX_HOST/sagex/api?c=plex:GetMediaFileForName&1=fname&encoder=json
+ * The purpose of the function is to return a SageTV MediaFile object
+ * with all SageTV attributes based on a filename.
+ *
+ * The API can be tested with a browser using a link such as:
+ *   http://usr:pwd@host:port/sagex/api?c=plex:GetMediaFileForName&1=file&encoder=json
+ * replace 'file' with the actual filename
  *
  * SageTV API:
  *   http://download.sage.tv/api/
@@ -21,7 +27,7 @@
 
 
 /**
- * Return MediaFile obj based on filename
+ * Return SageTV MediaFile obj based on filename
  *
  * Given a filename, will grab all mediafiles from sage, and loop
  * through trying to find a mediafile match for the given name
@@ -52,7 +58,7 @@ function GetMediaFileForName(filename)
         // If mediaFilename returned by GetMediaFileRelativePath
         // matches the parameter filename passed in then we want to
         // return the currrent media object we are inspecting.
-        if (mediaFilename == filename) {
+        if (mediaFilename === filename) {
 	    mediaFile = allMedia[i];
             break; // break out of main loop
         }
@@ -62,10 +68,14 @@ function GetMediaFileForName(filename)
         var subfiles = MediaFileAPI.GetSegmentFiles(allMedia[i]);
         // for each subfile returned from GetSegmentFiles look for a
         // match in the filename
-        for (n = 0; n < subfiles.length; n++) {
+        for (j = 0; j < subfiles.length; j++) {
             // If we find a match by checking that the aboslute path
             // contains our filename, return media object to caller
-            if (subfiles[n].getAbsolutePath().contains(filename)) {
+            var segf = subfiles[j];
+            // occasionally subfiles[j] is 'undefined' as shown in
+            // com.plexapp.agents.bmtagenttvshows.log, so we add check
+            // here as otherwise we'll get an exception
+            if (segf && segf.getAbsolutePath().contains(filename)) {
                 mediaFile = allMedia[i];
                 // inner loop, main loop will end also due to
                 // mediaFile
@@ -76,3 +86,16 @@ function GetMediaFileForName(filename)
 
     return mediaFile;
 }
+
+
+// Useful stuff:
+//
+//   JavaScript truthy values: false/null/undefined/''/0/NaN
+//
+// Open question:
+//
+//   Q1: where to output logs?
+//
+//   Q2: would it be faster if we simply return all of
+//       MediaFileAPI.GetMediaFiles() to python and do all the
+//       repeated searches for different files there?

@@ -7,6 +7,10 @@
   * Exported project from Google Code to Github
     from: https://code.google.com/p/sagetv-for-plexmediacenter/
       to: https://github.com/ai7/sagetv-for-plexmediacenter
+  * checked in r7 code not in source from 2013-12-10
+      - SageTV-BMT-Agent/BMTAgentTVShows.bundle/Contents/Code/__init__.py
+      - SageTVScanner/Scanners/Movies/SageTV Movie Scanner.py
+      - SageTVScanner/Scanners/Series/SageTV Scanner.py
   * sagex\services\plex.js code cleanup:
       - fixed tab/space so file looks correct everywhere
       - updated comments to javadoc format
@@ -14,3 +18,7 @@
       - fixed loop: continue -> break
       - fixed outer loop to stop when mediaFile has value
       - add comments regarding what this file is for
+      - fixed occasional calling getAbsolutePath() on undefined error
+  * SageTVScanner\Scanners code cleanup
+      - removed simplejson module, not needed as plex has it
+      - massive Movie/Series scanner code cleanup
