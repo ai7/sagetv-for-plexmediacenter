@@ -14,23 +14,25 @@
 #          media server setup.
 ######################################################################
 
-import re, os, os.path, urllib
+import re, os, os.path, urllib, logging
 import Media, VideoFiles, Stack, Utils
 
 from datetime import date
 
-# write log to file until we figure out a better way
-import logging
+####################
+
+# import my sageplex modules
+from sageplex import config, sagex
+
+# create my configuration object
+sageplexcfg = config.Config()
+
+# initialize log
 logging.basicConfig(level=logging.DEBUG,
-                    filename='e:/plexscan.log',
+                    filename=sageplexcfg.getScanLog(),
                     format='%(asctime)s| %(module)s| %(levelname)-8s| %(message)s')
 
-import SageX  # my sagex API object
-
-# Enter ip address and port http://x.x.x.x:port
-# or if you server requires user/pass enter http://user:pass@x.x.x.x:port
-# SAGEX_HOST = 'http://x.x.x.x:port'
-SAGEX_HOST = 'http://sage:frey@localhost:8080'
+####################
 
 # --------------------
 # regular expression used to find sagetv recordings in the specified directory.
@@ -48,7 +50,10 @@ def Scan(path, files, mediaList, subdirs):
     '''Scan for SageTV TV Shows'''
     logging.info('***** Entering SageTV Scanner.Scan *****')
 
-    sagex = SageX.SageX(url=SAGEX_HOST)  # create sagex obj
+    # create sagex obj
+    sagexcfg = sageplexcfg.getSagex()
+    sageapi = sagex.SageX(sagexcfg['host'], sagexcfg['port'],
+                          sagexcfg['user'], sagexcfg['password'])
 
     logging.debug('Calling VideoFiles.Scan() ...');
     VideoFiles.Scan(path, files, mediaList, subdirs, None) # Scan for video files.
@@ -71,7 +76,7 @@ def Scan(path, files, mediaList, subdirs):
 
         # Get SageTV media info from sagex via HTTP call
         logging.debug('Getting media info from SageTV ...')
-        mf = sagex.GetMediaFileForName(filename)
+        mf = sageapi.GetMediaFileForName(filename)
         if not mf:
             # this would happen if there is a file on the Plex import
             # directory but that file is not yet in Sage's DB

@@ -3,13 +3,7 @@
 # python falsy values: None/False/0/''/{}
 # function implicit return: None
 
-import urllib, logging
-
-# try simplejson if fail use json
-try:
-    import simplejson as json
-except ImportError:
-    import json
+import os, urllib, json, logging
 
 DEFAULT_CHARSET = 'UTF-8'
 
@@ -110,7 +104,8 @@ class SageX:
             input = urllib.urlopen(url)
             fileData = input.read()
         except IOError, e:
-            logging.error("SageX.call: failed to open url: " + str(e))
+            logging.error("SageX.call: failed to open url: " + url)
+            logging.error(e)
             return
 
         # decode json if specified
