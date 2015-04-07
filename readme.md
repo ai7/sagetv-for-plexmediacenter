@@ -10,16 +10,15 @@ on google code.
 
 It contains some much needed improvements, as well as a thorough
 rewrite of the code base. It should be much easier to follow and work
-with, and I hope this will allow more people to contribute an improve
+with, and I hope this will allow more people to contribute and improve
 this project.
 
 ## Install
 
 This assumes you are somewhat familiar with this plugin, SageTV, and
-PLEX Media Server. If not, please take a look at this wiki for some
-background information and requirements:
-
-http://code.google.com/p/sagetv-for-plexmediacenter/wiki/InstallingAndUsing
+PLEX Media Server. If not, please take a look at this [Install
+Wiki](http://code.google.com/p/sagetv-for-plexmediacenter/wiki/InstallingAndUsing)
+wiki for some background information and requirements:
 
 1. Unzip sagetv-for-plexmediacenter-r8.zip to a temporary location.
   * **sagetv** folder contains files for SageTV
@@ -50,6 +49,15 @@ If for some reason the scanner/agent is not able to locate this file,
 or you wish to put it elsewhere, you can set an environment variable
 **SAGEPLEX_CFG** to point to this file or the directory where this
 file resides.
+
+The value for the environment variable can contain other environment
+variables, for example:
+
+```
+set SAGEPLEX_CFG=%LOCALAPPDATA%\Plex Media Server
+```
+
+#### sageplex_cfg.json ####
 
 ```
 {
@@ -171,4 +179,4 @@ suitable directory structure for install on user system.
 ## Notes
 
 Many thanks to PiX64 and others who created the initial project on
-Google Code. This will not be possible without their contribution.
+Google Code, this will not be possible without their contribution.
