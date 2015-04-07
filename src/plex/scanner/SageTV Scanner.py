@@ -1,5 +1,6 @@
 ######################################################################
-# Author: PiX(64) - Reid, Michael
+# Author:  PiX(64) - Reid, Michael
+#          Raymond Chi
 #
 # Source:  This scanner was built using code found in Plex Media
 #          Scanner.py. Thank you to the plex development team for
@@ -14,23 +15,36 @@
 #          media server setup.
 ######################################################################
 
-import re, os, os.path, urllib, logging
+# Reference:
+#   https://github.com/plexinc-plugins/Scanners.bundle/blob/master/Contents/Resources/Series/Plex%20Series%20Scanner.py
+
+import re, os, os.path, sys, logging
 import Media, VideoFiles, Stack, Utils
 
 from datetime import date
 
+LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
+
 ####################
 
-# import my sageplex modules
-from sageplex import config, sagex
+# note: Plex will load the sageplex module from the Movie Scanner's
+#       folder instead of from the TV Scanner's folder due to the way
+#       plex organizes python import folders.
 
-# create my configuration object
-sageplexcfg = config.Config()
+import sageplex.plexlog # log wrapper for scanner/agent
+import sageplex.config  # handles sageplex configuration file
+import sageplex.sagex   # handles sagex API to SageTV
 
-# initialize log
-logging.basicConfig(level=logging.DEBUG,
-                    filename=sageplexcfg.getScanLog(),
-                    format='%(asctime)s| %(module)s| %(levelname)-8s| %(message)s')
+logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)  # use console
+sageplexcfg = sageplex.config.Config(sys.platform)  # create Config object
+
+# setup logging, slightly complicated because initially we log to console,
+# after the config object is read, we update logging to the new logfile
+mylog = sageplex.plexlog.PlexLog()  # log wrapper
+mylog.updateLoggingConfig(sageplexcfg.getScannerLog(), LOG_FORMAT,
+                          sageplexcfg.getScannerDebug())
+
+mylog.debug('Python ' + sys.version)
 
 ####################
 
@@ -47,117 +61,131 @@ logging.basicConfig(level=logging.DEBUG,
 
 # Look for episodes.
 def Scan(path, files, mediaList, subdirs):
-    '''Scan for SageTV TV Shows'''
-    logging.info('***** Entering SageTV Scanner.Scan *****')
+    '''Scan for SageTV TV Shows
 
-    # create sagex obj
-    sagexcfg = sageplexcfg.getSagex()
-    sageapi = sagex.SageX(sagexcfg['host'], sagexcfg['port'],
-                          sagexcfg['user'], sagexcfg['password'])
+    This is called by PLEX for every directory and subdirectories in
+    the import folder.
 
-    logging.debug('Calling VideoFiles.Scan() ...');
+    @param path       path relative to root folder
+    @param files      empty list
+    @param mediaList  show should be added here
+    @param subdirs    list of subdirs under path
+    '''
+    mylog.info('***** Entering SageTV Scanner.Scan *****')
+    mylog.debug('Path: ' + (path if path else 'ROOT'))
+
+    # create sagex obj for SageTV API call
+    sagexHost = sageplexcfg.getSagexHost()
+    sageapi = sageplex.sagex.SageX(sagexHost)
+
+    # scans the current dir and return the list files for processing.
+    # files that have already been processed will not be returned.
+    mylog.debug('Calling VideoFiles.Scan() ...');
     VideoFiles.Scan(path, files, mediaList, subdirs, None) # Scan for video files.
+    if not files:
+        mylog.info('No files returned, done')
+        mylog.info('')  # done write empty line so we have good separator for next time
+        return
 
-    item_no = 0
-    files_size = len(files)
+    # stat we track while in loop
+    stat = { 'item': 0,
+             'size': len(files),
+             'added': 0}
 
     # interate over all files found in VideoFiles.Scan above
     for i in files:
         # i contains the full path to the file
-        item_no += 1
-        logging.info('[%d/%d] Processing %s', item_no, files_size, i)
+        stat['item'] += 1
+        mylog.info('[%d/%d] Processing %s', stat['item'], stat['size'], i)
 
         filename = os.path.basename(i)
         (fname, fext) = os.path.splitext(filename)
 
-        if not fext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts', '.m4v']:
-            logging.info('wrong extension, skipping: %s', fext)
+        # if the extension is in our list of acceptable sagetv file extensions, then process
+        if not fext.lower() in sageplexcfg.getScannerExt():
+            mylog.info('wrong extension, skipping: %s', fext)
             continue
 
         # Get SageTV media info from sagex via HTTP call
-        logging.debug('Getting media info from SageTV ...')
-        mf = sageapi.GetMediaFileForName(filename)
+        mylog.debug('Getting media info from SageTV ...')
+        mf = sageapi.getMediaFileForName(filename)
         if not mf:
             # this would happen if there is a file on the Plex import
             # directory but that file is not yet in Sage's DB
-            logging.error("No media info from SageTV: %s", filename)
+            mylog.error("No media info from SageTV: %s", filename)
             continue
 
         # retrieving the airing/show field that should always exist
         airing = mf.get('Airing')
         if not airing:
-            logging.error('no Airing field, skipping file');
+            mylog.error('no Airing field, skipping file');
             continue
         showMF = airing.get('Show')
         if not showMF:
-            logging.error('no [Airing][Show] field, skipping file');
+            mylog.error('no [Airing][Show] field, skipping file');
+            continue
+
+        # check to see if TV show or not
+        if not mf.get('IsTVFile'):
+            mylog.warning("File is NOT TV Show! skipping")
             continue
 
         showTitle = showMF.get('ShowTitle').encode('UTF-8')
-        logging.debug('ShowTitle: %s', showTitle)
+        mylog.debug('ShowTitle: %s', showTitle)
 
         episodeTitle = showMF.get('ShowEpisode').encode('UTF-8')
-        logging.debug('ShowEpisode: %s', episodeTitle)
+        mylog.debug('ShowEpisode: %s', episodeTitle)
 
         if not episodeTitle:
-            logging.warning('Using Title as Episode')
+            mylog.warning('Using Title as Episode')
             episodeTitle = showTitle
 
         # Try and get show year, if show year is blank,
         # then try using original airdate, if
         # originalairdate is blank use recordeddate year
         showYear = showMF.get('ShowYear').encode('UTF-8')
-        logging.debug('ShowYear: %s', showYear)
+        mylog.debug('ShowYear: %s', showYear)
         if not showYear:
             startTime = float(showMF.get('OriginalAiringDate') // 1000)
             recordTime = float(airing.get('AiringStartTime') // 1000)
             if (startTime > 0):
                 airDate = date.fromtimestamp(startTime)
-                logging.warning('Setting show year from OriginalAiringDate: %s', airDate)
+                mylog.warning('Setting show year from OriginalAiringDate: %s', airDate)
                 showYear = int(airDate.year)
             elif (recordTime > 0):
                 airDate = date.fromtimestamp(recordTime)
-                logging.warning('Setting show year from AiringStartTime: %s', airDate)
+                mylog.warning('Setting show year from AiringStartTime: %s', airDate)
                 showYear = int(airDate.year)
             else:
                 showYear = 2012  # TODO: better default?
-                logging.warning('Setting show year to default: %d', 2015)
+                mylog.warning('Setting show year to default: %d', 2015)
         else:
             showYear = int(showYear)
 
         # must convert to int or else Plex throws a
         # serialization exception
         s_num = int(showMF.get('ShowSeasonNumber'))
-        logging.debug('ShowSeasonNumber: %d', s_num)
+        mylog.debug('ShowSeasonNumber: %d', s_num)
 
         # must convert to string or else Plex throws a
         # serialization exception
         ep_num = int(showMF.get('ShowEpisodeNumber'))
-        logging.debug('ShowEpisodeNumber: %d', ep_num)
+        mylog.debug('ShowEpisodeNumber: %d', ep_num)
 
         # if there is no season or episode number, default
         # it to 0 so that Plex can still pull it in
         if not ep_num:
             ep_num = int(airing.get('AiringID'))
-            logging.warning('No episode number, setting ep_num to AiringID: %d', ep_num)
+            mylog.warning('No episode number, setting ep_num to AiringID: %d', ep_num)
         if not s_num:
             s_num = showYear
-            logging.warning("Show number is 0, setting to show year: %d", s_num)
-
-        # TODO: this test is wrong but Ok for here I suppose
-        category = showMF.get('ShowCategoriesString')
-        logging.debug('ShowCategories: %s', category)
-        if not (category.find("Movie") < 0 and
-                category.find("Movies") < 0 and
-                category.find("Film") < 0):
-            logging.warning("File is Movie or Film! skipping")
-            continue
+            mylog.warning("Show number is 0, setting to show year: %d", s_num)
 
         # now we create the Media.Episode object representing this
         # show so we can add it to PLEX.
-        logging.debug('Creating PLEX Media.Episode object ...')
+        mylog.debug('Creating PLEX Media.Episode object ...')
         tv_show = Media.Episode(showTitle, s_num, ep_num, episodeTitle, None)
-        logging.debug("Media.Episode: %s", tv_show)
+        mylog.debug("Media.Episode: %s", tv_show)
 
         tv_show.display_offset = 0  # what's this?
 
@@ -166,7 +194,7 @@ def Scan(path, files, mediaList, subdirs):
         valid = False
         m_seg = mf.get('NumberOfSegments')
         if (m_seg > 1):
-            logging.info("Media has more than 1 segment: %s", m_seg)
+            mylog.info("Media has more than 1 segment: %s", m_seg)
             # x = Saturtday Night Live (season 01, Episode 27) => ['path']
             counter = 0
             for value in mediaList:
@@ -175,17 +203,19 @@ def Scan(path, files, mediaList, subdirs):
                     value.season == s_num and
                     value.episode == ep_num):
                     if (value.parts[0] < i):
-                        logging.info("value.parts[0] less than currnet file. "
-                                     "Current file goes at [1]. [0] = %s" %
-                                     mediaList[counter].parts[0])
+                        mylog.info("value.parts[0] less than currnet file. "
+                                   "Current file goes at [1]. [0] = %s" %
+                                   mediaList[counter].parts[0])
                         mediaList[counter].parts.append(i)
+                        stat['added'] += 1
                         valid = True
-                        logging.info("new mediaList = %s" % mediaList)
+                        mylog.info("new mediaList = %s" % mediaList)
                         break
                     elif (value.parts[0] > i):
-                        logging.info("value.parts[0] greater than current file. "
-                                     "Set [1] = [0] and [0] = i")
+                        mylog.info("value.parts[0] greater than current file. "
+                                   "Set [1] = [0] and [0] = i")
                         mediaList[counter].parts.insert(0,i)
+                        stat['added'] += 1
                         valid = True
                         break
                 # Current show not yet found increment and continue
@@ -195,29 +225,33 @@ def Scan(path, files, mediaList, subdirs):
             # and looped through entire mediaList. Not
             # current in mediaList so add
             if not valid:
-                logging.warning("We have a file with mutliple parts in bmt, "
-                                "but not currently in media list. "
-                                "Adding to mediaLiost")
+                mylog.warning("We have a file with mutliple parts in bmt, "
+                              "but not currently in media list. "
+                              "Adding to mediaLiost")
                 tv_show.parts.append(i)
         else:
             # Show only has 1 segment. Append
-            logging.debug("Media file only has 1 segments, done")
+            mylog.debug("Media file only has 1 segments, done")
             tv_show.parts.append(i)
 
         if valid:
             # multi-segment and handled, so done
             continue
 
-        logging.info("Adding show to mediaList")
+        mylog.info("Adding show to mediaList")
         mediaList.append(tv_show)
+        stat['added'] += 1
 
     # END "for i in files"
+    mylog.info('Total: %d of %d added to mediaList',
+               stat['added'], stat['size'])
 
     # only need to do this once at end, not for every file
-    logging.info("Performing Stack.Scan() ...")
-    Stack.Scan(path, files, mediaList, subdirs)
+    if stat['added']:
+        mylog.info("Performing Stack.Scan() ...")
+        Stack.Scan(path, files, mediaList, subdirs)
 
-    logging.info('')  # done write empty line so we have good separator for next time
+    mylog.info('')  # done write empty line so we have good separator for next time
 
 
 if __name__ == '__main__':

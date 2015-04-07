@@ -1,0 +1,27 @@
+{
+    "sagex": {
+        "host"     : "localhost",
+        "port"     : 8080,
+        "user"     : "sage",
+        "password" : "frey"
+    },
+    "plex": {
+        "host"     : "localhost",
+        "port"     : 32400
+    },
+    "scanner": {
+        "ext"      : [".mpg", ".avi", ".mkv", ".mp4", ".ts", ".m4v"],
+        "log"      : "%LOCALAPPDATA%\\Plex Media Server\\Logs\\sageplex_scanner.log",
+        "debug"    : true
+    },
+    "agent": {
+        "locking"  : true
+    },
+
+    "ignored":  {
+        "log_win"  : "%LOCALAPPDATA%\\Plex Media Server\\Logs\\sageplex_scanner.log",
+        "log_mac"  : "$HOME/Library/Logs/sageplex_scanner.log",
+        "log_lin"  : "$PLEX_HOME/Library/Application Support/Plex Media Server/Logs/sageplex_scanner.log",
+        "dummy"    : "last"
+    }
+}

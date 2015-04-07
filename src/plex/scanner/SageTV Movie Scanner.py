@@ -1,6 +1,7 @@
-######################################################################
+#####################################################################
 # Author:  PiX(64) - Reid, Michael
-# 
+#          Raymond Chi
+#
 # Source:  This scanner was built using code found in Plex Media
 #          Scanner.py. Thank you to the plex development team for
 #          their help and great starting point.
@@ -15,70 +16,139 @@
 #          media server setup.
 ######################################################################
 
-import re, os, os.path
+# Reference:
+#   https://github.com/plexinc-plugins/Scanners.bundle/blob/master/Contents/Resources/Movies/Plex%20Movie%20Scanner.py
+
+import re, os, os.path, sys, logging
 import Media, VideoFiles, Stack, Utils
 
-import SageX  # my sagex API object
+LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
 
-# Enter ip address and port http://x.x.x.x:port
-# or if you server requires user/pass enter http://user:pass@x.x.x.x:port
-# SAGEX_HOST = 'http://x.x.x.x:port'
-SAGEX_HOST = 'http://sage:frey@localhost:8080'
+####################
+
+# note: Plex will load the sageplex module from the Movie Scanner's
+#       folder instead of from the TV Scanner's folder due to the way
+#       plex organizes python import folders.
+
+import sageplex.plexlog # log wrapper for scanner/agent
+import sageplex.config  # handles sageplex configuration file
+import sageplex.sagex   # handles sagex API to SageTV
+
+logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)  # use console
+sageplexcfg = sageplex.config.Config(sys.platform)  # create Config object
+
+# setup logging, slightly complicated because initially we log to console,
+# after the config object is read, we update logging to the new logfile
+mylog = sageplex.plexlog.PlexLog()  # log wrapper
+mylog.updateLoggingConfig(sageplexcfg.getScannerLog(), LOG_FORMAT,
+                          sageplexcfg.getScannerDebug())
+
+mylog.debug('Python ' + sys.version)
+
+####################
+
 
 # Look for episodes.
 def Scan(path, files, mediaList, subdirs):
-    '''Scan for SageTV Movies'''
+    '''Scan for SageTV Movies
+
+    This is called by PLEX for every directory and subdirectories in
+    the import folder.
+
+    @param path       path relative to root folder
+    @param files      empty list
+    @param mediaList  show should be added here
+    @param subdirs    list of subdirs under path
+
+    '''
+    mylog.info('***** Entering SageTV Movie Scanner.Scan *****')
+    mylog.debug('Path: ' + (path if path else 'ROOT'))
+
+    # create sagex obj for SageTV API call
+    sagexHost = sageplexcfg.getSagexHost()
+    sageapi = sageplex.sagex.SageX(sagexHost)
     
-    sagex = SageX.SageX(url=SAGEX_HOST)  # create sagex obj
-
+    # scans the current dir and return the list files for processing.
+    # files that have already been processed will not be returned.
+    mylog.debug('Calling VideoFiles.Scan() ...');
     VideoFiles.Scan(path, files, mediaList, subdirs, None) # Scan for video files.
+    if not files:
+        mylog.info('No files returned, done')
+        mylog.info('')  # done write empty line so we have good separator for next time
+        return
 
-    # loop used to interate over all files found in VideoFiles.Scan above
+    # stat we track while in loop
+    stat = { 'item': 0,
+             'size': len(files),
+             'added': 0}
+
+    # interate over all files found in VideoFiles.Scan above
     for i in files:
+        # i contains the full path to the file
+        stat['item'] += 1
+        mylog.info('[%d/%d] Processing %s', stat['item'], stat['size'], i)
 
-        file = os.path.basename(i)
-        (file, ext) = os.path.splitext(file)
-        print "*** Found File name = %s%s, Start looking for metadata" % (file,ext)
+        filename = os.path.basename(i)
+        (fname, fext) = os.path.splitext(filename)
 
         # if the extension is in our list of acceptable sagetv file extensions, then process
-        if not ext.lower() in ['.mpg', '.avi', '.mkv', '.mp4', '.ts', '.m4v']:
-            print "******NO MATCH FOUND BY SCANNER!"
+        if not fext.lower() in sageplexcfg.getScannerExt():
+            mylog.info('wrong extension, skipping: %s', fext)
             continue
 
         # Get SageTV media info from sagex via HTTP call
-        mf = sagex.GetMediaFileForName(file + ext)
+        mylog.debug('Getting media info from SageTV ...')
+        mf = sageapi.getMediaFileForName(filename)
         if not mf:
             # this would happen if there is a file on the Plex import
             # directory but that file is not yet in Sage's DB
-            print "****** Current file (%s%s) was not found in BMT!)" % (file,ext)
+            mylog.error("No media info from SageTV: %s", filename)
             continue
 
+        # retrieving the airing/show field that should always exist
         airing = mf.get('Airing')
+        if not airing:
+            mylog.error('no Airing field, skipping file');
+            continue
         showMF = airing.get('Show')
         if not showMF:
-            print "****** Current file (%s%s) did not return a valid MEdiaFile Object from BMT" % (file,ext)
+            mylog.error('no [Airing][Show] field, skipping file');
             continue
-            
-        category = showMF.get('ShowCategoriesString')
-        showTitle = showMF.get('ShowTitle').encode('UTF-8')
-        showYear = showMF.get('ShowYear').encode('UTF-8')
 
+        # make sure not a TV show
+        if mf.get('IsTVFile'):
+            mylog.warning("File is TV Show! skipping")
+            continue
+
+        showTitle = showMF.get('ShowTitle').encode('UTF-8')
+        mylog.debug('ShowTitle: %s', showTitle)
+
+        showYear = showMF.get('ShowYear').encode('UTF-8')
+        mylog.debug('ShowYear: %s', showYear)
         if not showYear:
             showYear = ''
 
-        # TODO: this is the wrong test, movies shows up as
-        # 'Adventure / Fantasy' so the test will fail
-        if (category.find("Movie") < 0 and
-            category.find("Movies") < 0 and
-            category.find("Film") < 0):
-            print "****** Current file (%s%s) is a TVShow" % (file,ext)
-            continue
-
-        # create PLEX Movie object
+        # now we create the Media.Movie object representing this
+        # movie so we can add it to PLEX.
         movie = Media.Movie(showTitle, showYear)
-        movie.source = VideoFiles.RetrieveSource(file)
+        movie.source = VideoFiles.RetrieveSource(filename)
         movie.parts.append(i)
+
+        mylog.info("Adding show to mediaList")
         mediaList.append(movie)
-        # Stack the results.
+        stat['added'] += 1
+
+    # END "for i in files"
+    mylog.info('Total: %d of %d added to mediaList',
+               stat['added'], stat['size'])
+
+    # only need to do this once at end, not for every file
+    if stat['added']:
+        mylog.info("Performing Stack.Scan() ...")
         Stack.Scan(path, files, mediaList, subdirs)
-        print "****** Current file (%s%s) successfully added to stack!" % (file,ext)
+
+    mylog.info('')  # done write empty line so we have good separator for next time
+
+# useful stuff
+# python falsy values: None/False/0/''/{}
+# function implicit return: None

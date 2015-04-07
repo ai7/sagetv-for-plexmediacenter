@@ -1,11 +1,18 @@
-# my module that deals with sagex API calls
+#####################################################################
 #
-# python falsy values: None/False/0/''/{}
-# function implicit return: None
+# Author:  Raymond Chi
+#
+# Module that handles communication with sageTV server. Work under
+# both scanner (standalone python) and agent (PMS framework)
+#
+######################################################################
 
-import os, urllib, json, logging
+import urllib, json, threading
 
-DEFAULT_CHARSET = 'UTF-8'
+import plexlog  # log wrapper for scanner/agent
+
+DEFAULT_CHARSET = 'utf-8'
+
 
 def unicodeToStr(obj):
     '''Convert unicode string/array/dict to UTF-8
@@ -29,40 +36,75 @@ def unicodeToStr(obj):
     else:
         return obj # leave numbers and booleans alone
 
-class SageX:
+
+class SageX(object):
     '''Class that handles talking to a sagex service via HTTP interface'''
 
-    def __init__(self, host='localhost', port='8080',
-                 user='sage', password='frey', url=None):
+    def __init__(self, sagexHost, useLock=True, log=None):
         '''Creates a SageX object
 
-        Takes either a url such as http://usr:pwd@host:port directly,
-        or the set of values (host, port, user, password) for which
-        the url will be constructed from.
-
-        @param host      hostname or ip of SageTv with sagex running
-        @param port      port number
-        @param user      username
-        @param password  password
-        @param url       full url, other parameter is ignored
+        @param sagexHost  url such as http://usr:pwd@host:port/
+        @param useLock    whether to synchronize sagex API calls
+        @param log        plexlog obj from Agent, or None
         '''
-        if url:
-            if not url.endswith('/'):
-                url += '/'
-            self._sagex_host = url
+        # setup log
+        if log:  # called from agent
+            self.log = log
+            self.isAgent = True
+        else:  # called from scanner, use default (console)
+            self.log = plexlog.PlexLog()
+            self.isAgent = False
+        # set property
+        if sagexHost:
+            if not sagexHost.endswith('/'):
+                sagexHost += '/'
+            self.SAGEX_HOST = sagexHost
         else:
-            # http://sage:frey@localhost:8080
-            self._sagex_host = ('http://%s:%s@%s:%s/' %
-                                (user, password, host, port))
+            self.SAGEX_HOST = ''
+            self.log.error('SageX: sagexHost not specified!!')
+        # used to synchronize sagex http call, otherwise may get
+        # fanart download problem as PLEX calls Agent.search() and
+        # Agent.update() from multiple threads and there seems to be
+        # some issue with downloading fanart there.
+        self.useLock = useLock
+        # self.lock = Thread.Lock('sagexLock')
+        self.lock = threading.Lock()
 
-    def _getApiUrl(self, func, params, service, encoder):
+    def openUrl(self, url):
+        '''now open the url and get the raw data returned
+
+        @param url  URL to open
+        @return     data from server or None
+        '''
+        # TODO: figure out why sagex needs to be single threaded for
+        # all fan art to download correctly.
+        fileData = None
+        # if self.useLock: Thread.AcquireLock(self.lock)
+        if self.useLock: self.lock.acquire()
+        try:
+            self.log.debug('openUrl: %s', url)
+            # we can't use the framework's HTTPRequest() or
+            # JSON.ObjectFromURL() because it apparently doesn't know
+            # how to deal with url that have user/password
+            input = urllib.urlopen(url)
+            fileData = input.read()
+        except IOError, e:
+            self.log.error("openUrl: failed on: %s: %s", url, str(e))
+        finally:
+            # if self.useLock: Thread.ReleaseLock(self.lock)
+            if self.useLock: self.lock.release()
+
+        return fileData
+
+
+    def getApiUrl(self, func, params, service, encoder):
         '''Generate the URL we need to make the sagex API call
 
         @param func     sagex API function name
         @param params   [list] of parameters
         @param service  custom service name, or None
         @param encoder  result encoders: xml, json, and nielm
-        @return         url for making the call
+        @return         url for making the sagex API call
         '''
         # first construct the function parameters
         # &1=params[0]&2=params[1]...
@@ -77,9 +119,9 @@ class SageX:
         if service:
             service += ':'
 
-        # now construct the URL
+        # now construct the URL such as
         # /sagex/api?c=plex:GetMediaFileForName&1=%s&encoder=json
-        url = (self._sagex_host +
+        url = (self.SAGEX_HOST +
                ('sagex/api?c=%s%s%s&encoder=%s' %
                 (service, func, pStr, encoder)))
         return url;
@@ -87,56 +129,190 @@ class SageX:
     def call(self, func, params=[], service='', encoder='json'):
         '''Make a generic sagex API call
 
-        @param func     function to call
-        @param params   [list] of parameters
-        @param service  custom service name, or None
+        @param func     sagex function to call
+        @param params   [list] of parameters for function
+        @param service  custom service name
         @param encoder  result encoders: xml, json, and nielm
         @return         result of call as string
         '''
         if not func:
-            logging.error("SageX.call: func is NULL")
+            self.log.error("SageX.call: func is NULL")
             return
-        url = self._getApiUrl(func, params, service, encoder);
+        url = self.getApiUrl(func, params, service, encoder);
 
         # now open the url
-        try:
-            # logging.info('SageX.call: ' + url)
-            input = urllib.urlopen(url)
-            fileData = input.read()
-        except IOError, e:
-            logging.error("SageX.call: failed to open url: " + url)
-            logging.error(e)
+        data = self.openUrl(url)
+        if not data:
             return
 
         # decode json if specified
         if encoder == 'json':
-            s1 = json.JSONDecoder().decode(fileData)
-        else:
-            s1 = fileData;
+            if self.isAgent:
+                s1 = JSON.ObjectFromString(data)
+            else:
+                s1 = json.JSONDecoder().decode(data)
         # is this needed?
         return unicodeToStr(s1)
 
-    def GetMediaFileForName(self, filename):
+    # API implemented in plex.js
+    def getMediaFileForName(self, filename):
         '''Call the GetMediaFileForName API
 
         Invoke the GetMediaFileForName API and return the value stored
-        under "MediaFile" key.
+        under "MediaFile" key. This object contains all SageTV
+        properties for this particular episode.
 
         @param filename  filename to lookup media info
         @return          json[MediaFile] or None
         '''
         s1 = self.call('GetMediaFileForName', [filename], 'plex');
         if s1:
-            return s1.get('MediaFile') # None if key not found
-            
+            val = s1.get('MediaFile') # None if key not found
+            self.log.debug('getMediaFileForName(%s): %s', filename,
+                           'found' if val else 'not found')
+            return val
+
+    # http://download.sage.tv/api/sage/api/ShowAPI.html#GetShowSeriesInfo%28sage.Show%29
+    def getShowSeriesInfo(self, showExternalID):
+        '''Call the GetShowSeriesInfo API
+
+        Invoke the GetShowSeriesInfo API and return the value stored
+        under "SeriesInfo" key. This object contains SageTV
+        properties about a particular show series
+
+        @param showExternalID  show id such as EP010855880150
+        @return                json[SeriesInfo] or None
+        '''
+        s1 = self.call('GetShowSeriesInfo',
+                       ['show:%s' % showExternalID])
+        if s1:
+            val = s1.get('SeriesInfo')
+            self.log.debug('getShowSeriesInfo(%s): %s', showExternalID,
+                           'found' if val else 'not found')
+            return val
+
+    # http://download.sage.tv/api/sage/api/MediaFileAPI.html#GetMediaFiles%28%29
+    def getMediaFilesForShow(self, showName):
+        '''Return the list of media files for a particular show
+
+        Invoke the GetMediaFiles API and filter result using
+        GetShowTitle(showName)
+
+        @param showName  show name such as 'Scandal'
+        @return          list of media files
+        '''
+        s1 = self.call('EvaluateExpression',
+                       ['FilterByMethod(GetMediaFiles("T"), "GetShowTitle", "%s", true)' %
+                        showName])
+        if s1:
+            val = s1.get('Result') # None if key not found
+            self.log.debug('getMediaFilesForShow(%s): %s', showName,
+                           'found ' + str(len(val)) if val else 'not found')
+            return val
+
+
+    # http://download.sage.tv/api/sage/api/MediaFileAPI.html#GetMediaFileForID%28int%29
+    def getMediaFileForID(self, mediaFileId):
+        '''Get a mediaFile based on a mediaFileId
+
+        Returns the MediaFile object that corresponds to the passed in
+        ID. The ID should come from the MediaFileID field
+
+        @param mediaFileId  id such as '3517255'
+        @return             json[MediaFile] or None
+        '''
+        s1 = self.call('GetMediaFileForID', [str(mediaFileId)])
+        if s1:
+            val = s1.get('MediaFile') # None if key not found
+            self.log.debug('getMediaFileForID(%s): %s', mediaFileId,
+                           'found' if val else 'not found')
+            return val
+
+    # https://github.com/stuckless/sagetv-sagex-api/wiki/REST-APIs-using-sagex-api
+    def getFanArtUrl(self, artifact, mfid):
+        '''Get the URL for retrieving the particular type of fanart
+
+        @param artifact  poster|banner|background|episode
+        @param mfid      media file ID
+        @return          URL
+        '''
+        if not (artifact == 'poster' or artifact == 'banner' or
+                artifact == 'background' or artifact == 'episode'):
+            self.log.error('SageX.getFanArtUrl: invalid artifact specified: %s', artifact)
+            return
+
+        url = (self.SAGEX_HOST +
+               'sagex/media/fanart?mediafile=%s&artifact=%s' % (mfid, artifact))
+        return url
+
+    def getFanArt(self, url):
+        '''Request for fanart and check result
+
+        Request a fanart from SageTV. The URL is the one generated by
+        getFanArtUrl(). This simply opens the URL and gets the result,
+        which should be an image.
+
+        If the fanart is not found, the server will return back an
+        HTML page. We look for the beginning <html> tag and return
+        None if that is the case
+
+        @param url  URL to open the fanart
+        @param      fanart or None
+        '''
+        # open the url and get the response from server
+        response = self.openUrl(url)
+        if not response:
+            self.log.warning('getFanArt: server returned no data')
+            return
+
+        # need to check reply to make sure it is a fanart
+        if (response.startswith('<html>') or response.startswith('<HTML>')):
+            self.log.warning('getFanArt: <html> detected in fanart response, not fanart')
+            return False
+
+        return response
+
+
+######################################################################
+
+# for testing
 
 def main():
-    if len(sys.argv) > 1:
-        sagex = SageX(url='http://sage:frey@localhost:8080')
-        pprint.pprint(sagex.GetMediaFileForName(sys.argv[1]))
-    else:
+    c = config.Config(sys.platform)
+    if len(sys.argv) < 2:
         print 'Usage: <media_file>'
+        return
+    sagex = SageX(c.getSagexHost())
 
-if __name__ == '__main__':
-    import sys, pprint
-    main()
+    # test various APIs
+    a = sys.argv[1]
+    sagex.log.info('********** getMediaFileForName(%s) **********', a)
+    mf = sagex.getMediaFileForName(a)
+    pprint.pprint(mf)
+
+    a = mf['Airing']['Show']['ShowExternalID']
+    sagex.log.info('********** getShowSeriesInfo(%s) **********', a)
+    r = sagex.getShowSeriesInfo(a)
+    pprint.pprint(r)
+
+    a = mf['MediaTitle']
+    sagex.log.info('********** getMediaFilesForShow(%s) **********', a)
+    r = sagex.getMediaFilesForShow(a)
+    for f in r:
+        sagex.log.info(f['SegmentFiles'])
+
+    a = mf['MediaFileID']
+    sagex.log.info('********** getMediaFileForID(%s) **********', a)
+    r = sagex.getMediaFileForID(a)
+    sagex.log.info(r['SegmentFiles'])
+
+#if __name__ == '__main__':
+#    import sys, logging, pprint
+#    import config
+#    logging.basicConfig(format='%(asctime)s| %(levelname)-8s| %(message)s',
+#                        level=logging.DEBUG)
+#    main()
+
+# useful stuff
+# python falsy values: None/False/0/''/{}
+# function implicit return: None

@@ -1,347 +1,432 @@
-import re, datetime, unicodedata, hashlib, types, urllib, os, simplejson as json
-from datetime import date
+#
+# SageTV BMT Agent (TV Shows)
+#
+# This file implements a PMS agent plug-in that adds metadata to files
+# found by the SageTV Scanner. It queryings sagex on SageTV server to
+# fill in the show information and download the appropriate fan arts.
+#
+# Plex Plug-in Framework documentation
+#   https://dev.plexapp.com/docs/
+#
+# Note: This runs inside the PMS framework's runtime environment. The
+#       environment is different from from regular Python program, and
+#       certain restrictions apply. For example, functions name cannot
+#       begin with _. For details, see the plug-in documentation above.
+#
 
-SAGEX_HOST = ""
-PLEX_HOST = ""
+import urllib, os
 
-DEFAULT_CHARSET = 'utf-8'
+import plexlog              # log wrapper
+import config               # handles sageplex_cfg.json configuration
+import sagex                # handles communication with SageTV
+
+mylog    = None
+myconfig = None
+mysagex  = None
+
 
 def Start():
-    HTTP.CacheTime = CACHE_1HOUR * 24 
-    
-def unicodeToStr(obj):
-    t = obj
-    if (t is unicode):
-        return obj.encode(DEFAULT_CHARSET)
-    elif (t is list):
-        for i in range(0, len(obj)):
-            obj[i] = unicodeToStr(obj[i])
-        return obj
-    elif (t is dict):
-        for k in obj.keys():
-            v = obj[k]
-            del obj[k]
-            obj[k.encode(DEFAULT_CHARSET)] = unicodeToStr(v)
-        return obj
-    else:
-        return obj # leave numbers and booleans alone
-    
-def executeSagexAPICall(url, resultToGet):
-    Log.Debug('*** sagex request URL: %s' % url)
-    try:
-        input = urllib.urlopen(url)
-    except IOError, i:
-        Log.Debug("ERROR in executeSagexAPICall: Unable to connect to SageTV server")
-        return None
-    fileData = input.read()
-    resp = unicodeToStr(json.JSONDecoder().decode(fileData))
+    '''This function is called when the plug-in first starts. It can be
+    used to perform extra initialisation tasks such as configuring the
+    environment and setting default attributes.
+    '''
+    global mylog, myconfig, mysagex
+    mylog = plexlog.PlexLog(isAgent=True)  # use Log instead of logging
 
-    Log.Debug('*****resp from sagex = %s' % resp)
+    mylog.info('***** Initializing "SageTV BMT Agent (TV Shows)" *****')
+    HTTP.CacheTime = CACHE_1HOUR * 24
 
-    objKeys = resp.keys()
-    numKeys = len(objKeys)
-	
-    Log.Debug('*****numKeys = %s' % numKeys)
-    if (numKeys == 1):
-        return resp.get(resultToGet)
-    else:
-        return None
-  
-def getShowSeriesInfo(showExternalID):
-    url = SAGEX_HOST + '/sagex/api?c=GetShowSeriesInfo&1=show:%s&encoder=json' % showExternalID
-    resp = executeSagexAPICall(url, 'SeriesInfo')
-    return resp
-  
-def getMediaFilesForShow(showName):
-    parameter = ', "GetShowTitle", "%s", ' % showName
-    url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles("T")%strue)&encoder=json' % parameter
-    Log.Debug("UNQUOTED getMediaFilesForShow URL=%s" % url)
-    url = SAGEX_HOST + '/sagex/api?c=EvaluateExpression&1=FilterByMethod(GetMediaFiles("T")%strue)&encoder=json' % urllib.quote(parameter)
-    Log.Debug("QUOTED getMediaFilesForShow URL=%s" % url)
-    return executeSagexAPICall(url, 'Result')
-  
-def getMediaFileForID(mediaFileID):
-    url = SAGEX_HOST + '/sagex/api?c=GetMediaFileForID&1=%s&encoder=json' % mediaFileID
-    Log.Debug('**** URL to Call = %s' % url)
-    return executeSagexAPICall(url, 'MediaFile')
-  
-def getMediaFileForFilePath(filename):
-    url = SAGEX_HOST + '/sagex/api?c=plex:GetMediaFileForName&1=%s&encoder=json' % filename
-    Log.Debug('**** URL to Call = %s' % url)
-    return executeSagexAPICall(url, 'MediaFile')
-  
-def getFilenameOnly(filepathAndName):
-    if (filepathAndName.find("\\") < 0):
-        return filepathAndName[filepathAndName.rfind("/")+1:len(filepathAndName)]
-    else:
-        return filepathAndName[filepathAndName.rfind("\\")+1:len(filepathAndName)]
+    # PMS supports a DefaultPrefs.json file for plug-ins, and settings
+    # can be accessed via simple Prefs['id'].
+    #
+    # The problem is, after the 1st run, settings are stored per plugin
+    # in an XML file in the "plug-in support folder":
+    #  plug-in support\preferences\com.plexapp.agents.bmtagenttvshows.xml
+    # This makes updating the setting by the user a little confusing,
+    # as there are 2 places to change.
+    #
+    # using a standalone json file for both scanner/agent is easier
+    # for the user to understand and manage.
+    myconfig = config.Config(Platform.OS, log=mylog)
+    sagexHost = myconfig.getSagexHost()
+    mylog.info('SAGE_HOST: %s', sagexHost)
+    plexHost = myconfig.getPlexHost()
+    mylog.info('PLEX_HOST: %s', plexHost)
 
-def readPropertiesFromPropertiesFile():
-    # global SAGEX_HOST, PLEX_HOST
-    try:
-        cwd = os.getcwd()
-        Log.Debug('***cwdddddddddddd=%s' % cwd)
-        if (cwd.find("\\") >= 0): # backslashes are typically from windows machines
-            cwd = cwd.replace("\\\\?\\", "")
-            cwd = cwd.replace("Plug-in Support\\Data\\com.plexapp.agents.bmtagenttvshows", 
-                              "Plug-ins\\BMTAgentTVShows.bundle\\Contents\\Code\\")
-        elif (len(cwd) == 1): # for some reason on Macs, CWD returns just a forward slash /
-            cwd = "~/Library/Application Support/Plex Media Server/Plug-ins/BMTAgentTVShows.bundle/Contents/Code/"
-        elif (cwd.find("/") >= 0): # forward slashes are typically from non-windows machines
-            cwd = cwd.replace("Plug-in Support/Data/com.plexapp.agents.bmtagenttvshows", 
-                              "Plug-ins/BMTAgentTVShows.bundle/Contents/Code/")
+    # create the SageX object from sagex module
+    mysagex = sagex.SageX(sagexHost,
+                          useLock=myconfig.getAgentLocking,
+                          log=mylog)
 
-        propertiesFilePath = cwd + "BMTAgent.properties"
-        Log.Debug('***propertiesFilePath=%s' % propertiesFilePath)
-        if (os.path.isfile(propertiesFilePath)):
-            f = os.open(propertiesFilePath, os.O_RDONLY)
-        else:
-            return False
-        # Read all input from the properties file
-        fileInput = ""
-        c = os.read(f, 1)
-        while c != "":
-            fileInput = fileInput + c
-            c = os.read(f, 1)
-        
-        lines = fileInput.split('\n')
-        for keyValuePair in lines:
-            keyValues = keyValuePair.split('=')
-            Log.Debug('***Properties file key=%s; value=%s' % (keyValues[0], keyValues[1]))
-            if (keyValues[0] == "SAGEX_HOST"):
-                SAGEX_HOST = keyValues[1]
-            elif (keyValues[0] == "PLEX_HOST"):
-                PLEX_HOST = keyValues[1]
-        
-    except:
-        return False
-    
-    os.close(f)
-    return True
-  
-def setWatchedUnwatchedFlag(id, isWatched):
-    Log.Debug('*** setWatchedUnwatchedFlagsetWatchedUnwatchedFlag: id=%s;isWatched=%s' % (id, str(isWatched)))
-    if (isWatched):
-        # If sage says it's watched, set it as watched in Plex
-        url = PLEX_HOST + '/:/scrobble?key=%s&identifier=com.plexapp.plugins.library' % id
-    else:
-        url = PLEX_HOST + '/:/unscrobble?key=%s&identifier=com.plexapp.plugins.library' % id
-    Log.Debug('*** PLEX request URL: %s' % url)
-    try:
-        input = urllib.urlopen(url)
-    except IOError, i:
-        Log.Debug("ERROR in setWatchedUnwatchedFlag: Unable to connect to PMS server")
-        return False
-    return True
-  
-def getFanart(url):
-    try:
-        response = urllib.urlopen(url)
-        fileData = response.read()
-    except IOError, i:
-        Log.Debug("ERROR in getFanart: Unable to download fanart at the following URL: %s" % url)
-        return None
-    return fileData
 
 class BMTAgent(Agent.TV_Shows):
-  name = 'SageTV BMT Agent (TV Shows)'
-  languages = [Locale.Language.English]
-  primary_provider = True
-  contributes_to = None
-  accepts_from = ['com.plexapp.agents.plexthememusic']
+    '''This is the agent class representing SageTV BMT Agent'''
 
-  def search(self, results, media, lang, manual=False):
-    #filename = media.items[0].parts[0].file.decode('utf-8')
-    Log.Debug("****STARTTTTTTTT")
-    # if (not readPropertiesFromPropertiesFile()):
-    #     Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
-    
-    global SAGEX_HOST, PLEX_HOST
-	
-    quotedFilepathAndName = media.filename
-    Log.Debug('****media.id=%s; media.filename=%s' % (str(media.id), quotedFilepathAndName))
-    unquotedFilepathAndName = urllib.unquote(quotedFilepathAndName)
-    # Pull out just the filename to use
-    unquotedFilename = getFilenameOnly(unquotedFilepathAndName)
-    Log.Debug('****unquotedFilepathAndName=%s' % unquotedFilepathAndName)
-    Log.Debug('****unquotedFilename=%s' % unquotedFilename)
-    (filename, ext) = os.path.splitext(unquotedFilename)
-    Log.Debug('****filename = %s' % filename)
-    mf = getMediaFileForFilePath(filename)
-    
-    if (mf): # this would only return false if there is a file on the Plex import directory but that file is not yet in Sage's DB
-        airing = mf.get('Airing')
-	Log.Debug('***Get Airing Successful***')
-        show = airing.get('Show')
-	Log.Debug('***Get Show successful***')
-        # Check if the Sage recording is a movie or film; if it is, ignore it (workaround for user is to move movies out to a separate import directory that Plex can read an import as Movie content vs. TV Show content
-        category = show.get('ShowCategoriesString')
-        Log.Debug('***Get ShowCategoriesString Successful')
-        if (category.find("Movie") < 0 and 
-            category.find("Movies") < 0 and 
-            category.find("Film") < 0):
-            Log.Debug('***1) AiringStartTime = %s' % airing.get('AiringStartTime'))
-            if (airing.get('AiringStartTime')):
-                startTime = airing.get('AiringStartTime') // 1000
-                airDate = date.fromtimestamp(startTime)
-            # Log.Debug('***1) airdate = %s' % airDate)
-            mfid = str(mf.get('MediaFileID'))
-            results.Append(MetadataSearchResult(id=mfid, name=media.show, score=100, lang=lang, year=airDate.year))
-        else:
-            Log.Debug('***Movies/Movies/Film found, ignoring and will not call update; categorylist=%s' % category)
-    else:
-	Log.Debug('**** ERROR MF returned FALSE!*****')
+    # A string defining the name of the agent for display in the GUI.
+    # This attribute is required.
+    name = 'SageTV BMT Agent (TV Shows)'
 
-  def update(self, metadata, media, lang):
-    Log.Debug('***UPDATE CALLEDDDDDDDDDDDDDDDDDDDDDDDD')
-    #if (not readPropertiesFromPropertiesFile()):
-    #    Log.Debug("****UNABLE TO READ BMTAGENT.PROPERTIES FILE... aborting search")
+    # A list of strings defining the languages supported by the agent.
+    # These values should be taken from the constants defined in the
+    # Locale API. This attribute is required.
+    languages = [Locale.Language.English]
 
-    mfid = str(metadata.id)
-    mf = getMediaFileForID(mfid)        
-    # Log.Debug("***mfid = %s " % mf)
-    airing = mf.get('Airing')
-    show = airing.get('Show')
-    extrainfo = mf.get('MediaFileMetadataProperties')
-    showExternalID = show.get('ShowExternalID')
-    
-    series = getShowSeriesInfo(showExternalID)
+    # A boolean value defining whether the agent is a primary metadata
+    # provider or not. Primary providers can be selected as the main
+    # source of metadata for a particular media type.
+    primary_provider = True
 
-    #Set the Show level metadata
-    Log.Debug("series=%s" % str(series))
-    metadata.title = show.get('ShowTitle')
-    thetvdbid = extrainfo.get('MediaProviderDataID')
-    if (thetvdbid):
-        metadata.id = thetvdbid
-    else:
-        metadata.id = ""        
-    Log.Debug("****TVDBID = %s" % str(thetvdbid))
+    # A list of strings containing the identifiers of agents that can
+    # contribute secondary data to primary data provided by this
+    # agent. This attribute is optional.
+    # accepts_from = ['com.plexapp.agents.plexthememusic']
 
-    metadata.title_sort = metadata.title
-    if (series):
-        metadata.summary = series.get('SeriesDescription')
+    # A list of strings containing the identifiers of primary agents
+    # that the agent can contribute secondary data to. This attribute
+    # is optional.
+    # contributes_to = None
 
-    else:
-        metadata.summary = show.get('ShowDescription')
+    # https://dev.plexapp.com/docs/agents/search.html
+    def search(self, results, media, lang, manual):
+        '''Searching for results to provide matches for media
 
-    metadata.studio = airing.get('Channel').get('ChannelNetwork')       
-    
-    if (airing.get('AiringStartTime')):
-        startTime = airing.get('AiringStartTime') // 1000
-        airDate = date.fromtimestamp(startTime)
-        metadata.originally_available_at = airDate
-    
-    metadata.duration = airing.get('AiringDuration')
-    metadata.content_rating = str(airing.get('ParentalRating'))[:2] + '-' + str(airing.get('ParentalRating'))[2:]
-    cats = show.get('ShowCategoriesString')
-    metadata.genres.clear()
-    metadata.genres.add(cats)
-        
-    Log.Debug("METADATA.ID = %s", extrainfo.get('MediaProviderDataID'))
-    Log.Debug("COMPLETED SETTING SERIES-LEVEL METADATA;metadata.title=%s;metadata.summary=%s;metadata.originally_available_at=%s;metadata.studio=%s" % (metadata.title, metadata.summary, metadata.originally_available_at, metadata.studio))
+        When the media server needs an agent to perform a search, it
+        calls the agent's search method.
 
-    # Set the metadata for all episode's in each of the season's
-    mfs = getMediaFilesForShow(metadata.title)
-    for seasonNum in media.seasons:
-        season = metadata.seasons[seasonNum]
-        for episodeNum in media.seasons[seasonNum].episodes:
-            Log.Debug("LOOKING FOR METADATA FOR metadata.seasons[%s].episodes[%s]" % (seasonNum, episodeNum))
-            episode = metadata.seasons[seasonNum].episodes[episodeNum]
-            for mf in mfs:
+        should use the hints provided by the media object to add a
+        series of search result objects to the provided results
+        object. Results should be instances of the
+        MetadataSearchResult class.
+
+        This is called once for each Show.
+
+        @param results  An empty container that the developer should
+                        populate with potential matches.
+        @param media    An object containing hints to be used when
+                        performing the search.
+        @param lang     A string identifying the user's currently
+                        selected language.
+        @param manual   Whether the search was issued automatically
+                        or manually by user.
+        '''
+        # media contains: (not all fields shown)
+        # {'filename': 'G%3A%5Csagetest%5CScandal-KissKissBangBang-2804046-0%2Empg',
+        #  'show': 'Scandal',
+        #  'season': '3',
+        #  'episode': '14',
+        #  'name': 'Kiss Kiss Bang Bang',
+        #  'episodic': '1',
+        #  'id': '9351'}
+        mylog.info("***** entering BMTAgent.search(%s) ***** ", media.show)
+
+        # simply add media to search result, no need to do anything.
+        #
+        # originally this contained quite a bit of code, the main
+        # purpose being to extract an mfid from sagetv based on
+        # media.filename, and store it in the MetadataSearchResult.id
+        # field. The update() function can then retrieve the media
+        # from Sage given the mfid recorded here.
+        #
+        # But this is not necessary. In update(), the media object
+        # contains the filename for all the seasons and episodes.
+        # We can use that to do lookup in sage directly.
+        msr = MetadataSearchResult(id=media.id, name=media.show,
+                                   score=100, lang=lang)
+        mylog.debug('%s: adding to search result: %s', media.show, msr)
+        results.Append(msr)
+
+    # https://dev.plexapp.com/docs/agents/update.html
+    def update(self, metadata, media, lang):
+        '''Adding metadata to media
+
+        Once an item has been successfully matched, it is added to the
+        update queue. As the framework processes queued items, it
+        calls the update method of the relevant agents.
+
+        This is called once for each Show. The function should craw
+        through all the seasons/episodes and set the appropriate
+        attribute on each one.
+
+        @param metadata  A pre-initialized metadata object if this is
+                         the first time the item is being updated, or
+                         the existing metadata object if the item is
+                         being refreshed.
+        @param media     An object containing information about the
+                         media hierarchy in the database.
+        @param lang      A string identifying the user's currently
+                         selected language.
+        '''
+        # use a local mylog object as this function is called from
+        # different threads and we want the log header (that is stored
+        # inside the mylog object) to be unique for each call.
+        mylog = plexlog.PlexLog(isAgent=True)
+
+        mylog.info("***** entering BMTAgent.update(%s) ***** ", media.title)
+
+        if media and metadata.title is None: metadata.title = media.title
+
+        # Show/Series info is set when we encounter 1st episode below
+        seriesInfo = False
+
+        # now set information for each episode in each season
+        for s in media.seasons:
+
+            season = metadata.seasons[s]
+            season.index = int(s)
+
+            for e in media.seasons[s].episodes:
+
+                episode = metadata.seasons[s].episodes[e]
+                episodeMedia = media.seasons[s].episodes[e].items[0]
+                # the file for episode is available from the media
+                # object, no need to use mysagex.getMediaFilesForShow
+                epFile = os.path.basename(episodeMedia.parts[0].file)
+                # set a log prefix such as: "showname/s5/e11: "
+                mylog.setPrefix('%s/s%s/e%s: ' % (metadata.title, s, e))
+                mylog.info('%s', epFile)
+
+                # get the MediaFile object from sage
+                mf = mysagex.getMediaFileForName(epFile)
+                if not mf:
+                    # this should not happen
+                    mylog.error("no media info from SageTV")
+                    continue
+
                 mediaFileID = mf.get('MediaFileID')
+                mylog.info('mfid: %s', mediaFileID)
+
+                # retrieving the airing/show field that should always exist
                 airing = mf.get('Airing')
-                if (airing):
-                    show = airing.get('Show')
-                    if (show):
-                        plexFilename = getFilenameOnly(media.seasons[seasonNum].episodes[episodeNum].items[0].parts[0].file)
-                        mfFilenames = mf.get('SegmentFiles')
-                        for mfFilename in mfFilenames:
-                            mfFilename = getFilenameOnly(mfFilename)
-                            # Log.Debug("mfFilename=%s;plexFilename=%s" % (str(mfFilename), plexFilename))
-                            (plexName, plexExt) = os.path.splitext(plexFilename)
-                            (sageName, sageExt) = os.path.splitext(mfFilename)
-                            if (plexName == sageName):
-                                # Log.Debug("****plexName = %s" % plexName)
-                                # Log.Debug("****sageName = %s" % sageName)
-                                Log.Debug("SHOW OBJECT FOR MATCHED SHOW: %s" % str(show))
-                                Log.Debug("UPDATING METADATA FOR SEASON: %s; EPISODE: %s" % (seasonNum, episodeNum))
-                                Log.Debug('***2) AiringStartTime = %s' % airing.get('AiringStartTime'))
-                                
-                                if (airing.get('AiringStartTime')):
-                                    startTime = airing.get('AiringStartTime') // 1000
-                                    airDate = date.fromtimestamp(startTime)
+                if not airing:
+                    mylog.error('no Airing field, skipping file');
+                    continue
+                show = airing.get('Show')
+                if not show:
+                    mylog.error('no [Airing][Show] field, skipping file');
+                    continue
 
-                                Log.Debug('***2) airdate = %s' % airDate)
+                # set series info if we haven't done so already
+                if not seriesInfo:
+                    if self.setShowSeriesInfo(metadata, media, mf, mylog):
+                        seriesInfo = True
 
-                                episode.title = show.get('ShowEpisode')
-                                if (episode.title == None or episode.title == ""):
-                                    episode.title = show.get('ShowTitle')
-                                episode.summary = show.get('ShowDescription')
-                                episode.originally_available_at = airDate
-                                episode.duration = airing.get('AiringDuration')
-                                episode.season = int(seasonNum)
+                # TODO: move the following episode setter to own function?
+                mylog.info('setting episode level metadata')
+                if (airing.get('AiringStartTime')):
+                    startTime = airing.get('AiringStartTime') // 1000
+                    airDate = Datetime.FromTimestamp(startTime)
 
-                                stars = show.get('PeopleListInShow')
-                                episode.guest_stars.clear()
-                                for star in stars:
-                                    episode.guest_stars.add(star)
+                mylog.debug('airdate: %s', airDate)
 
-                                background_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=background' % mediaFileID
-                                poster_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=poster' % mediaFileID
-                                banner_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=banner' % mediaFileID
+                episode.title = show.get('ShowEpisode')
+                if not episode.title:
+                    episode.title = show.get('ShowTitle')
+                episode.summary = show.get('ShowDescription')
+                episode.originally_available_at = airDate
+                episode.duration = airing.get('AiringDuration')
+                episode.season = int(s)
 
-                                #Set Season urls
-                                season_poster_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=poster' % (mediaFileID)
-                                season_background_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=background' % (mediaFileID)
-                                season_banner_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=banner' % (mediaFileID)
-                                thumb_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=episode' % (mediaFileID)                                
-                                
-                                #if (show.get('SeasonNumber') is None):
-                                #   season_poster_url = poster_url
-                                #   season_banner_url = banner_url
-                                #   #thumb_url= SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=episode' % (mediaFileID)
-                                #   thumb_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=episode' % (mediaFileID)
-                                #else:
-                                #   season_poster_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=poster&season=%s' % (mediaFileID,seasonNum)
-                                #   season_background_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=background&season=%s' % (mediaFileID,seasonNum)
-                                #   season_banner_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=banner&season=%s' % (mediaFileID,seasonNum)
-                                #   thumb_url = SAGEX_HOST + '/sagex/media/fanart?mediafile=%s&artifact=episode' % (mediaFileID)
+                stars = show.get('PeopleListInShow')
+                episode.guest_stars.clear()
+                for star in stars:
+                    episode.guest_stars.add(star)
 
-                                # Log.Debug("***posterurl = %s && season poster = %s" % (poster_url,season_poster_url))
+                # set rating
+                rSource = airing.get('ParentalRating')
+                rTarget = rSource[:2] + '-' + rSource[2:]
+                mylog.debug('rating: %s -> %s', rSource, rTarget)
+                episode.content_rating = rTarget
 
-                                # First check if the poster is already
-                                # assigned before adding it again to
-                                # top level tvshow element
-                                if not metadata.posters:
-                                    metadata.posters[poster_url] = Proxy.Media(getFanart(str(poster_url)))
-                                if not metadata.art:
-                                    metadata.art[background_url] = Proxy.Media(getFanart(str(background_url)))
-                                if not metadata.banners:
-                                    metadata.banners[banner_url] = Proxy.Media(getFanart(str(banner_url)))
+                # set watched flag
+                isWatched = airing.get('IsWatched')
+                mylog.debug('IsWatched: %s', isWatched)
+                self.setWatchedFlag(media.seasons[s].episodes[e].id,
+                                    isWatched, mylog)
 
-                                # Set season and episode level fan art
-                                # First check if the poster is already
-                                # assigned before adding it again
-                                if not season.posters:
-                                    season.posters[poster_url] = Proxy.Media(getFanart(str(season_poster_url)))
-                                if not season.banners:
-                                    season.banners[banner_url] = Proxy.Media(getFanart(str(season_banner_url)))
-                                if not episode.thumbs:
-                                    episode.thumbs[thumb_url] = Proxy.Media(getFanart(str(thumb_url)))
-                                
-                                # Log.Debug("episode.thumbs = %s" % (str(episode.thumbs)))
-                                # Log.Debug("**show parental rating = %s" % str(airing.get('ParentalRating')))
-                                episode.content_rating = str(airing.get('ParentalRating'))[:2] + '-' + str(airing.get('ParentalRating'))[2:]
-                                
-                                Log.Debug('*** callingggggggg: id=%s' % media.id)
-                                setWatchedUnwatchedFlag(str(media.seasons[seasonNum].episodes[episodeNum].id), airing.get('IsWatched'))
-                                
-                                mfprops = mf.get('MediaFileMetadataProperties')
-                                episode.guest_stars.add(show.get('PeopleInShow'))
-                                episode.writers.add(mfprops.get('Writer'))
-                                episode.directors.add(mfprops.get('Director'))
-                                episode.producers.add(mfprops.get('ExecutiveProducer'))
-                                
-                                Log.Debug("COMPLETED SETTING EPISODE-LEVEL METADATA FOR SEASON: %s; EPISODE: %s;;;;episode.title=%s;episode.summary=%s;episode.originally_available_at=%s;episode.duration=%s;episode.season=%s;metadata.content_rating=%s;" % (seasonNum, episodeNum, episode.title, episode.summary, episode.originally_available_at, episode.duration, episode.season, metadata.content_rating))
-                                
-                                break
+                # misc stuff
+                mfprops = mf.get('MediaFileMetadataProperties')
+                episode.guest_stars.add(show.get('PeopleInShow'))
+                episode.writers.add(mfprops.get('Writer'))
+                episode.directors.add(mfprops.get('Director'))
+                episode.producers.add(mfprops.get('ExecutiveProducer'))
+
+                # set the fanart for show and episode
+                self.setFanArt(metadata, season, episode, mediaFileID, mylog)
+
+                mylog.debug("COMPLETED SETTING EPISODE-LEVEL METADATA: "
+                            "episode.title=%s;episode.summary=%s;"
+                            "episode.originally_available_at=%s;episode.duration=%s;"
+                            "episode.season=%s;metadata.content_rating=%s;" %
+                            (episode.title, episode.summary,
+                             episode.originally_available_at, episode.duration,
+                             episode.season, metadata.content_rating))
+
+
+    def setShowSeriesInfo(self, metadata, media, mf, mylog):
+        '''Set information about the Show based on a Sage MediafileID
+
+        This sets information about the show (a TV series) based on
+        the mfid of a particular episode.
+
+        @param metadata  metadata from update() method
+        @param media     media from update() method
+        @param mf        MediaFile object from sage
+        @param mylog     local log wrapper with appropriate header set
+        @return          True on success
+        '''
+        # retrieving the airing/show field that should always exist
+        airing = mf.get('Airing')
+        if not airing:
+            mylog.error('setShowSeriesInfo: no Airing field, skipping file');
+            return
+        show = airing.get('Show')
+        if not show:
+            mylog.error('setShowSeriesInfo: no [Airing][Show] field, skipping file');
+            return
+
+        # get showid like EP010855880150
+        showExternalID = show.get('ShowExternalID')
+        if not showExternalID:
+            mylog.error('no ShowExternalID');
+            return
+        mylog.info('setShowSeriesInfo: %s', showExternalID)
+
+        extrainfo = mf.get('MediaFileMetadataProperties')
+        thetvdbid = extrainfo.get('MediaProviderDataID')
+        mylog.debug("TVDBID: %s", thetvdbid)
+        if thetvdbid:
+            metadata.id = thetvdbid  # overwrite id with thetvdbid, why?
+
+        # get the show's information from sagetv
+        series = mysagex.getShowSeriesInfo(showExternalID)
+        if series:
+            metadata.summary = series.get('SeriesDescription')
+        else:
+            metadata.summary = show.get('ShowDescription')
+        mylog.debug("metadata.summary: %s", metadata.summary)
+
+        metadata.studio = airing.get('Channel').get('ChannelNetwork')
+        mylog.debug("metadata.studio: %s", metadata.studio)
+
+        # use the show premier date, not episode date
+        premierDate = series.get('SeriesPremiereDate')
+        if premierDate:
+            airDate = Datetime.ParseDate(premierDate)
+            metadata.originally_available_at = airDate
+            mylog.debug("metadata.originally_available_at: %s",
+                        premierDate)
+
+        metadata.duration = airing.get('AiringDuration')
+        mylog.debug("metadata.duration: %s", metadata.duration)
+
+        # set rating
+        rSource = airing.get('ParentalRating')
+        rTarget = rSource[:2] + '-' + rSource[2:]
+        metadata.content_rating = rTarget
+        mylog.debug('metadata.content_rating: %s', rTarget)
+
+        # set category, add each category individually
+        cats = show.get('ShowCategoriesList')
+        metadata.genres.clear()
+        for cat in cats:
+            metadata.genres.add(cat)
+        mylog.debug('metadata.genres: %s', cats)
+
+        mylog.debug("COMPLETED SETTING SERIES-LEVEL METADATA: "
+                    "metadata.title=%s;metadata.summary=%s;"
+                    "metadata.originally_available_at=%s;metadata.studio=%s" %
+                    (metadata.title, metadata.summary,
+                     metadata.originally_available_at, metadata.studio))
+        return True
+
+    def setFanArt(self, metadata, season, episode, mediaFileID, mylog):
+        '''Set show and episode fanart
+
+        @param metadata
+        @param season
+        @param episode
+        @param mediaFileID
+        @param mylog
+        '''
+        # set fanart, format is
+        #   /sagex/media/fanart?title=ShowName&mediatype=tv|movie|music&
+        #     artifact=poster|banner|background&artifactTitle=&season=#&
+        #     overwrite=true|false&transform=json_transform&
+        #     scalex=#&scaley=#&tag=web&mediafile=sageid|filename
+
+        poster_url     = mysagex.getFanArtUrl('poster', mediaFileID)
+        background_url = mysagex.getFanArtUrl('background', mediaFileID)
+        banner_url     = mysagex.getFanArtUrl('banner', mediaFileID)
+
+        # Set Season urls
+        season_poster_url     = poster_url
+        season_background_url = background_url
+        season_banner_url     = banner_url
+        thumb_url             = mysagex.getFanArtUrl('episode', mediaFileID)
+
+        # first set fanart for the show (not season/episode)
+        if not metadata.posters:
+            faPoster = mysagex.getFanArt(poster_url)
+            if faPoster:
+                mylog.debug('setting metadata.posters')
+                metadata.posters[poster_url] = Proxy.Media(faPoster)
+        else:
+            mylog.debug('metadata.posters already has data')
+
+        if not metadata.art:
+            faBackground = mysagex.getFanArt(background_url)
+            if faBackground:
+                mylog.debug('setting metadata.art')
+                metadata.art[background_url] = Proxy.Media(faBackground)
+        else:
+            mylog.debug('metadata.art already has data')
+
+        if not metadata.banners:
+            faBanner = mysagex.getFanArt(banner_url)
+            if faBanner:
+                mylog.debug('setting metadata.banners')
+                metadata.banners[banner_url] = Proxy.Media(faBanner)
+        else:
+            mylog.debug('metadata.banners already has data')
+
+        # now we set fanart for season
+        if not season.posters:
+            faPoster = mysagex.getFanArt(season_poster_url)
+            if faPoster:
+                mylog.debug('setting season.posters')
+                season.posters[poster_url] = Proxy.Media(faPoster)
+        else:
+            mylog.debug('season.posters already has data')
+
+        if not season.banners:
+            faBanner = mysagex.getFanArt(season_banner_url)
+            if faBanner:
+                mylog.debug('setting season.banners')
+                season.banners[banner_url] = Proxy.Media(faBanner)
+        else:
+            mylog.debug('season.banners already has data')
+
+        # finally we set it for the show
+        if not episode.thumbs:
+            faThumb = mysagex.getFanArt(thumb_url)
+            if faThumb:
+                mylog.debug('setting episode.thumbs')
+                episode.thumbs[thumb_url] = Proxy.Media(faThumb)
+        else:
+            mylog.debug('episode.thumbs already has data')
+
+    def setWatchedFlag(self, id, isWatched, mylog):
+        '''Set the watched/not-watched flag on media in PLEX
+
+        @param id         plex media id
+        @param isWatched  true/false
+        '''
+        url = (myconfig.getPlexHost() +
+               (':/%s?key=%s&identifier=com.plexapp.plugins.library' %
+                ('scrobble' if isWatched else 'unscrobble', id)))
+        try:
+            mylog.debug('%s: %s', 'setWatchedFlag', url)
+            input = urllib.urlopen(url)
+        except IOError, e:
+            mylog.error("setWatchedFlag: failed to open url: %s: %s",
+                        url, str(e))

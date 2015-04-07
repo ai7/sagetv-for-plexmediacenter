@@ -1,19 +1,19 @@
 /*
- * Name:         GetMediaFileForName
- * Contributors: PiX64 (reid, michael)
- *               Raymond Chi
+ * Name:    GetMediaFileForName
+ * Author:  PiX64 (reid, michael)
+ *          Raymond Chi
  *
  * This file implements a custom 'plex' service for Remote HTTP API in
  * SageTV, enabled via sagex-services and Jetty Web Server plugin.
  *
  * The service implements the API 'GetMediaFileForName'. This is
  * called by the Plex scanner from the python side through sagex's web
- * interface. 
+ * interface.
  *
  * The purpose of the function is to return a SageTV MediaFile object
  * with all SageTV attributes based on a filename.
  *
- * The API can be tested with a browser using a link such as:
+ * The API can be tested with a browser as follow:
  *   http://usr:pwd@host:port/sagex/api?c=plex:GetMediaFileForName&1=file&encoder=json
  * replace 'file' with the actual filename
  *
@@ -77,8 +77,8 @@ function GetMediaFileForName(filename)
             // here as otherwise we'll get an exception
             if (segf && segf.getAbsolutePath().contains(filename)) {
                 mediaFile = allMedia[i];
-                // inner loop, main loop will end also due to
-                // mediaFile
+                // break out of inner loop, main loop will also end
+                // due to mediaFile being non false
                 break;
             }
         }
@@ -89,13 +89,10 @@ function GetMediaFileForName(filename)
 
 
 // Useful stuff:
+//   JavaScript falsy values: false/null/undefined/''/0/NaN
 //
-//   JavaScript truthy values: false/null/undefined/''/0/NaN
-//
-// Open question:
-//
+// Question:
 //   Q1: where to output logs?
-//
 //   Q2: would it be faster if we simply return all of
 //       MediaFileAPI.GetMediaFiles() to python and do all the
 //       repeated searches for different files there?

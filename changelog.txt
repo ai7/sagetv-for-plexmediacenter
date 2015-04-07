@@ -2,23 +2,113 @@
                               ChangeLog
 
 
+2015-04-06  Raymond Chi <raychi@gmail.com>
+
+  * general code cleanup on all files
+      - fixed tab/space usage on all files so it looks correct
+        everywhere (browser, notepad, etc)
+      - standarized on indent size 4 for all source files.
+      - removed nested/multi-level if statements when possible so the
+        code blocks are not indented all the way to the right. ie,
+        instead of multi-level "if cond1 then if cond2 .." style where
+        the main code block is heavily indented to the right, used "if
+        not cond1 then continue (loop)" style so subsequent test for
+        cond2 and beyond have the same indent level. This makes the
+        code much easier to read/follow/debug.
+      - wrapped long comment/code lines (emacs justify option)
+
+  * fully documented all source files
+      - added comments to each source file regarding what the file is
+        for, and useful links for additional info/background.
+      - used javadoc style comments for javascript files.
+      - used python docstring for in python files.
+      - the source code should be significantly easier to follow for
+        new contributors.
+  
+  * sagex\services\plex.js code cleanup/fix:
+      - fixed loop: continue -> break
+      - stop outer loop when mediaFile has a value. The previous code
+        would continue to run the loop even if we found a match.
+      - fixed bug where occasionally getAbsolutePath() gets called on
+        an undefined object
+
+  * allow user to configure scanner/agent via a sageplex_cfg.json file
+      - code will try to find the configuration file in plex data
+        directory. user can override this with an environment variable.
+      - removed all hard coded configuration settings from various
+        source files.
+
+  * created a common/sageplex module to hold common code that are used
+    by both scanner and agent.
+      - created plexlog.py wrapper for logging inside scanner/agent
+      - created config.py to handle scanner/agent configuration
+      - created sagex.py to handle all SageTV sagex API calls
+
+  * Scanners code cleanup/refactoring
+      - refactored common code into sageplex module
+      - replaced printf with logging via the plexlog module
+      - updated logging to use debug/info/warn level as appropriate
+      - track some statistics during loop: current, added, total
+      - use statistics in log during and after loop to show progress
+      - fixed check for movie/tv detection
+      - updated code in main loop.
+      - only call Stack.Scan() after all files have been processed and
+        files were added to mediaList.
+      - use simple python truthy/falsy test instead of testing for
+        empty string, None, etc explicitly.
+      - removed simplejson module, not needed as plex has it in
+        addition to providing a JSON interface.
+
+  * Agent code cleanup/refactoring
+      - refactored common code into sageplex module
+      - fixed problem of fanart downloading. the original code was
+        setting show/episode level fanart without checking whether the
+        response from sagex is valid or not. Although plex handled
+        this, this prevented subsequent episode with correct fanart
+        from updating a show fanart that was set to non image from
+        previous episodes (because its already set). With the updated
+        code, show will get fanart if at least one of the episodes in
+        it has fanart.
+      - synchronized calls into sagex API. there seems to be some
+        issues when multiple thrads are calling into it heavily, as is
+        the case when the library contains a lot of data on initial
+        scan. This can be turned on/off via configuration file.
+      - various performance improvements. Agent.search() has been
+        greatly simplified with no call to sagex. Agent.update()
+        correctly craws its season/episode tree to get the files and
+        query sage directly without relying on a mfid set in search().
+        the number of calls we make to sagex is reduced quite a bit.
+      - no longer rely on getMediaFilesForShow() api. This is a very
+        slow API and is used for each show. the code has been updated
+        to get the files directly from PLEX media object rather than
+        asking Sage.
+      - Modularized Agent.update() code into various functions.
+      - Update show information when we encounter 1st episode in
+        season/episode loop, not before the loop as a separate step.
+      - use show premier date for Show year, not episode air date.
+      - correctly set multiple show category.
+      - lots of misc code cleanup.
+
+  * Updated source tree directory structure.
+      - use 'src' instead of 'branches' as branch have a different
+        meaning in version control.
+      - organized sources into logical groupings (sagetv/plex,
+        agent/scanner, etc).
+      - included readme files at each level.
+      - use Makefile to build the output zip file for user to
+        download with the appropriate folder structure. this allowed
+        the src tree to be simplified.
+
 2015-03-28  Raymond Chi <raychi@gmail.com>
 
-  * Exported project from Google Code to Github
-    from: https://code.google.com/p/sagetv-for-plexmediacenter/
-      to: https://github.com/ai7/sagetv-for-plexmediacenter
   * checked in r7 code not in source from 2013-12-10
       - SageTV-BMT-Agent/BMTAgentTVShows.bundle/Contents/Code/__init__.py
       - SageTVScanner/Scanners/Movies/SageTV Movie Scanner.py
       - SageTVScanner/Scanners/Series/SageTV Scanner.py
-  * sagex\services\plex.js code cleanup:
-      - fixed tab/space so file looks correct everywhere
-      - updated comments to javadoc format
-      - trimmed long lines
-      - fixed loop: continue -> break
-      - fixed outer loop to stop when mediaFile has value
-      - add comments regarding what this file is for
-      - fixed occasional calling getAbsolutePath() on undefined error
-  * SageTVScanner\Scanners code cleanup
-      - removed simplejson module, not needed as plex has it
-      - massive Movie/Series scanner code cleanup
+      - author date set to 2013-12-10 with commit date current
+
+2015-03-24  Raymond Chi <raychi@gmail.com>
+
+  * Exported project from Google Code to Github
+      - from: https://code.google.com/p/sagetv-for-plexmediacenter/
+      - to:   https://github.com/ai7/sagetv-for-plexmediacenter
