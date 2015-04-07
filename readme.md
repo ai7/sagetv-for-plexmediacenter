@@ -56,8 +56,8 @@ file resides.
     "sagex": {
         "host"     : "localhost",
         "port"     : 8080,
-        "user"     : "sage",
-        "password" : "frey"
+        "user"     : "enter_username",
+        "password" : "enter_password"
     },
     "plex": {
         "host"     : "localhost",
