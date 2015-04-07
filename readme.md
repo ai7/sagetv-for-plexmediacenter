@@ -21,18 +21,18 @@ PLEX Media Server. If not, please take a look at this [Install
 Wiki](http://code.google.com/p/sagetv-for-plexmediacenter/wiki/InstallingAndUsing)
 wiki for some background information and requirements.
 
-1. Unzip sagetv-for-plexmediacenter-v*-*.zip to a temporary location.
-  * **sagetv** folder contains files for SageTV
-  * **plex** folder contains files for PLEX Media Server
+1. Unzip `sagetv-for-plexmediacenter-v*-*.zip` to a temporary location.
+  * **`sagetv`** folder contains files for SageTV
+  * **`plex`** folder contains files for PLEX Media Server
 2. Stop SageTV and PLEX Media Server.
-2. Copy content of *sagetv* subfolder to the SageTV program folder (where SageTV.exe is).
-  * sagetv\sagex\services\plex.js -> c:\program files (x86)\sagetv\sagetv\sagex\services
-3. Copy content of *plex\Scanners* to *%LOCALAPPDATA%\Plex Media Server\Scanners*
-  * plex\Scanners\Movies -> %LOCALAPPDATA%\Plex Media Server\Scanners\Movies
-  * plex\Scanners\Series -> %LOCALAPPDATA%\Plex Media Server\Scanners\Series
-4. Copy content of *plex\Plug-ins* to *%LOCALAPPDATA%\Plex Media Server\Plug-ins*
-  * plex\Plug-ins\BMTAgentTVShows.bundle -> %LOCALAPPDATA%\Plex Media Server\Plug-ins\BMTAgentTVShows.bundle
-5. Copy *plex\sageplex_cfg.json* to *%LOCALAPPDATA%\Plex Media Server*
+2. Copy content of `sagetv` subfolder to the SageTV program folder (where SageTV.exe is).
+  * `sagetv\sagex\services\plex.js` -> `c:\program files (x86)\sagetv\sagetv\sagex\services`
+3. Copy content of `plex\Scanners` to `%LOCALAPPDATA%\Plex Media Server\Scanners`
+  * `plex\Scanners\Movies` -> `%LOCALAPPDATA%\Plex Media Server\Scanners\Movies`
+  * `plex\Scanners\Series` -> `%LOCALAPPDATA%\Plex Media Server\Scanners\Series`
+4. Copy content of `plex\Plug-ins` to `%LOCALAPPDATA%\Plex Media Server\Plug-ins`
+  * `plex\Plug-ins\BMTAgentTVShows.bundle` -> `%LOCALAPPDATA%\Plex Media Server\Plug-ins\BMTAgentTVShows.bundle`
+5. Copy `plex\sageplex_cfg.json` to `%LOCALAPPDATA%\Plex Media Server`
   * Edit this file with the appropriate SageTV/PLEX settings
 6. Start SageTV and PLEX Media Server.
 
