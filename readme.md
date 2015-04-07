@@ -19,7 +19,7 @@ more contributors.
 This assumes you are somewhat familiar with this plugin, SageTV, and
 PLEX Media Server. If not, please take a look at this [Install
 Wiki](http://code.google.com/p/sagetv-for-plexmediacenter/wiki/InstallingAndUsing)
-wiki for some background information and requirements.
+for some background information and requirements.
 
 1. Unzip `sagetv-for-plexmediacenter-v*-*.zip` to a temporary location.
   * **`sagetv`** folder contains files for SageTV
