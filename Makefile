@@ -9,7 +9,7 @@ BUILD_DIR = build
 STAGE_DIR = $(BUILD_DIR)/stage
 
 REL_VERSION   = 8.0.0
-REL_PHASE     = beta1
+REL_PHASE     = beta
 
 SCANNER_TV    = $(STAGE_DIR)/plex/Scanners/Series
 SCANNER_MOVIE = $(STAGE_DIR)/plex/Scanners/Movies
