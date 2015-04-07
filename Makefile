@@ -8,6 +8,9 @@ SRC_DIR = src
 BUILD_DIR = build
 STAGE_DIR = $(BUILD_DIR)/stage
 
+REL_VERSION   = 8.0.0
+REL_PHASE     = beta1
+
 SCANNER_TV    = $(STAGE_DIR)/plex/Scanners/Series
 SCANNER_MOVIE = $(STAGE_DIR)/plex/Scanners/Movies
 AGENT_DIR     = $(STAGE_DIR)/plex/Plug-ins
@@ -52,7 +55,8 @@ agent:
 
 zip:
 	@echo "*** producing zipfile ***"
-	cd $(STAGE_DIR) && zip -9rX ../sagetv-for-plexmediacenter-r8.zip .
+	cd $(STAGE_DIR) && zip -9rX \
+	  ../sagetv-for-plexmediacenter-v$(REL_VERSION)-$(REL_PHASE).zip .
 
 clean:
 	rm -rf $(BUILD_DIR)

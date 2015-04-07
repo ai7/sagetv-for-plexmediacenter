@@ -4,23 +4,24 @@ SageTV Plug-in for PLEX Media Server
 
 ## Overview
 
-This is a continuation of the [sagetv-for-plexmediacenter]
-(http://code.google.com/p/sagetv-for-plexmediacenter/) project hosted
-on google code.
+This is a continuation of the
+[sagetv-for-plexmediacenter](http://code.google.com/p/sagetv-for-plexmediacenter/)
+project hosted on google code.
 
-It contains some much needed improvements, as well as a thorough
-rewrite of the code base. It should be much easier to follow and work
-with, and I hope this will allow more people to contribute and improve
-this project.
+The code has gotten some much needed love. Performance and stability
+has been improved. Some long standing issues have been addressed. The
+updated code base should be easier to follow and maintain. It is my
+hope that this will enable continued improvements to this project by
+more contributors.
 
 ## Install
 
 This assumes you are somewhat familiar with this plugin, SageTV, and
 PLEX Media Server. If not, please take a look at this [Install
 Wiki](http://code.google.com/p/sagetv-for-plexmediacenter/wiki/InstallingAndUsing)
-wiki for some background information and requirements:
+wiki for some background information and requirements.
 
-1. Unzip sagetv-for-plexmediacenter-r8.zip to a temporary location.
+1. Unzip sagetv-for-plexmediacenter-v*-*.zip to a temporary location.
   * **sagetv** folder contains files for SageTV
   * **plex** folder contains files for PLEX Media Server
 2. Stop SageTV and PLEX Media Server.
@@ -42,7 +43,7 @@ in the Add Library screen in PLEX Media Server:
 
 ### Config File
 
-The Scanner/Agent reads a sageplex_cfg.json file for configuration.
+The Scanner/Agent uses a sageplex_cfg.json file for configuration.
 This file should be in the root folder of the PLEX data folder.
 
 If for some reason the scanner/agent is not able to locate this file,
@@ -84,17 +85,22 @@ set SAGEPLEX_CFG=%LOCALAPPDATA%\Plex Media Server
 
 ## Update
 
-If you already have the plug-in installed, and wish to update or
-re-install the plugin. You can do the following:
+If you already have the plug-in installed, and wish to update the
+plugin to a newer version and rescan your library, you can perform the
+following additional steps to ensure the rescan will start from a
+clean state:
 
 1. Delete the existing SageTV library from your PLEX Media Server.
 2. Perform a **Clean Bundles** operation.
 3. Perform a **Empty Trash** operation.
-4. Stop PLEX Media Server
+4. Stop/Exit PLEX Media Server.
 5. Perform the install steps listed above.
 6. Start PLEX Media Server
 
-## Debug
+You can optionally clean the Log folder before step 6 if you want to
+start from a clean set of logs.
+
+## Troubleshooting
 
 After you install the Plug-in, you can add a Library to PLEX and use
 the **SageTV Scanner** as the Scanner and **SageTV BMT Agent (TV
@@ -172,11 +178,11 @@ folder:
 
 ## Build
 
-You can build the zip deliverable by simply run 'make' from the root
-folder. This will create a build directory and package a zip file with
-suitable directory structure for install on user system.
+You can build the zip deliverable by simply run 'make' from the
+project root folder. This will create a build directory and package a
+zip file with suitable directory structure for install on user system.
 
 ## Notes
 
 Many thanks to PiX64 and others who created the initial project on
-Google Code, this will not be possible without their contribution.
+Google Code, this will not be possible without their efforts.

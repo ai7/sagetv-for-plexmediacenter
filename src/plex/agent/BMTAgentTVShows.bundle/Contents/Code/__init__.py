@@ -308,13 +308,33 @@ class BMTAgent(Agent.TV_Shows):
         metadata.studio = airing.get('Channel').get('ChannelNetwork')
         mylog.debug("metadata.studio: %s", metadata.studio)
 
-        # use the show premier date, not episode date
-        premierDate = series.get('SeriesPremiereDate')
-        if premierDate:
-            airDate = Datetime.ParseDate(premierDate)
-            metadata.originally_available_at = airDate
-            mylog.debug("metadata.originally_available_at: %s",
-                        premierDate)
+        # now set the show's starting date. we first use the season
+        # premier date on the season object if available. otherwise we
+        # use the show's original air date or airing start time.
+        seasonStartSet = False
+        if series:
+            premierDate = series.get('SeriesPremiereDate')
+            if premierDate:
+                # use the show premier date if available
+                airDate = Datetime.ParseDate(premierDate)
+                metadata.originally_available_at = airDate
+                mylog.debug("metadata.originally_available_at: %s",
+                            premierDate)
+                seasonStartSet = True
+        if not seasonStartSet:
+            # next we try the show's metadata
+            startTime = show.get('OriginalAiringDate')
+            recordTime = airing.get('AiringStartTime')
+            if startTime:
+                airDate = Datetime.FromTimestamp(startTime // 1000)
+                mylog.info('Setting show starting from OriginalAiringDate: %s', airDate)
+                metadata.originally_available_at = airDate
+            elif recordTime:
+                airDate = Datetime.FromTimestamp(recordTime // 1000)
+                mylog.info('Setting show starting from AiringStartTime: %s', airDate)
+                metadata.originally_available_at = airDate
+            else:
+                mylog.error('No OriginalAiringDate/AiringStartTime!')
 
         metadata.duration = airing.get('AiringDuration')
         mylog.debug("metadata.duration: %s", metadata.duration)
