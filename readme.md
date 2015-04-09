@@ -14,6 +14,34 @@ updated code base should be easier to follow and maintain. It is my
 hope that this will enable continued improvements to this project by
 more contributors.
 
+## Download
+
+You can download sagetv-for-plexmediacenter from the
+[release](https://github.com/ai7/sagetv-for-plexmediacenter/releases)
+page.
+
+The `sagetv-for-plexmediacenter-v*-*.zip` file contains the following directories:
+
+```
++--plex
+|  +--Plug-ins
+|  |  \--BMTAgentTVShows.bundle
+|  |     \--Contents
+|  |        +--Code
+|  |        \--Resources
+|  \--Scanners
+|     +--Movies
+|     |  \--sageplex
+|     \--Series
+|        \--sageplex
+\--sagetv
+   \--sagex
+      \--services
+```
+
+* **`plex`** folder contains files for PLEX Media Server.
+* **`sagetv`** folder contains files for SageTV.
+
 ## Install
 
 This assumes you are somewhat familiar with this plugin, SageTV, and
@@ -22,8 +50,6 @@ Wiki](http://code.google.com/p/sagetv-for-plexmediacenter/wiki/InstallingAndUsin
 for some background information and requirements.
 
 1. Unzip `sagetv-for-plexmediacenter-v*-*.zip` to a temporary location.
-  * **`sagetv`** folder contains files for SageTV
-  * **`plex`** folder contains files for PLEX Media Server
 2. Stop SageTV and PLEX Media Server.
 2. Copy content of `sagetv` subfolder to the SageTV program folder (where SageTV.exe is).
   * `sagetv\sagex\services\plex.js` -> `c:\program files (x86)\sagetv\sagetv\sagex\services`
