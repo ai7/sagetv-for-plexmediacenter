@@ -7,6 +7,7 @@
       - TV scanner will now skip recorded movies.
       - Movie scanner will only pull in recorded movies.
       - Both will still only pull in recorded contents.
+  * Rotate scanner logs when size exceeds certain limit.
 
 2015-04-06  Raymond Chi <raychi@gmail.com>
 

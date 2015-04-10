@@ -7,7 +7,7 @@
 #
 ######################################################################
 
-import logging
+import logging, logging.handlers
 
 # various log levels
 CRITICAL = 50
@@ -45,7 +45,7 @@ class PlexLog(object):
             self.logPrefix = prefix
         else:
             self.logPrefix = ''
-        
+
     def log(self, lvl, msg, *args, **kwargs):
         '''write log with specific level
 
@@ -54,7 +54,7 @@ class PlexLog(object):
         @param kwargs  optional keyward arguments
         '''
         msg = self.logPrefix + str(msg)
-        
+
         if lvl == DEBUG:
             if self.isAgent:
                 Log.Debug(msg, *args, **kwargs)
@@ -81,7 +81,8 @@ class PlexLog(object):
             else:
                 logging.info(msg, *args, **kwargs)
 
-    def updateLoggingConfig(self, filename, log_format, debug):
+    def updateLoggingConfig(self, filename, log_format, debug,
+                            backups = 5, maxsize = 4*1024*1024):
         '''Update python logging configuration
 
         Update the python logging module's configuration to point to the
@@ -90,14 +91,18 @@ class PlexLog(object):
         @param filename    log path
         @param log_format  log format
         @param debug       enable debug log or not
+        @param backups     number of backups to keep for rotating logs
+        @param maxsize     max filesize before rotating logs
         '''
         if self.isAgent:
             # not for running under agent
             return
         # calculate level
         lvl = logging.DEBUG if debug else logging.INFO
-        # create new log handler
-        fileh = logging.FileHandler(filename, 'a')
+        # create new rotating log handler
+        fileh = logging.handlers.RotatingFileHandler(filename, 'a',
+                                                     maxBytes=maxsize,
+                                                     backupCount=backups)
         formatter = logging.Formatter(log_format)
         fileh.setFormatter(formatter)
         # update root logging's handler
@@ -108,7 +113,7 @@ class PlexLog(object):
         log.addHandler(fileh)      # set the new handler
 
     ## wrapper functions around log()
-    
+
     def debug(self, msg, *args, **kwargs):
         return self.log(DEBUG, msg, *args, **kwargs)
 
@@ -130,9 +135,11 @@ class PlexLog(object):
 # for testing
 def main():
     # basic format to console
-    logging.basicConfig(format='%(asctime)s| %(levelname)-8s| %(message)s',
-                        level=logging.DEBUG)
+    LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
+    logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG)
+
     mylog = PlexLog()
+    #mylog.updateLoggingConfig('mytest.log', LOG_FORMAT, True, 5, 20)
 
     # all level without prefix
     mylog.debug('some debug message: %s', 'test123')
