@@ -115,9 +115,8 @@ def Scan(path, files, mediaList, subdirs):
             mylog.error('no [Airing][Show] field, skipping file');
             continue
 
-        # make sure not a TV show
-        if mf.get('IsTVFile'):
-            mylog.warning("File is TV Show! skipping")
+        # check to see if TV show or not
+        if not isRecordedMovie(mf, airing, showMF):
             continue
 
         showTitle = showMF.get('ShowTitle').encode('UTF-8')
@@ -149,6 +148,32 @@ def Scan(path, files, mediaList, subdirs):
 
     mylog.info('')  # done write empty line so we have good separator for next time
 
+def isRecordedMovie(mf, airing, show):
+    '''Is this a recorded movie that we should process
+
+    @param mf      MediaFile obj from sage
+    @param airing  mf['Airing']
+    @param show    airing['Show']
+    @return        True/False
+    '''
+    # check if this is a sage recording or not
+    if not mf.get('IsTVFile'):
+        mylog.warning("File is NOT TV recording! skipping")
+        return False
+
+    # now check category
+    category = show.get('ShowCategoriesList')
+    if not category:
+        mylog.warning("No ShowCategoriesList! skipping")
+        return False
+
+    if not ('Movie' in category):
+        mylog.warning("Show is NOT a movie, skipping: %s", category)
+        return False
+
+    return True;
+
+    
 # useful stuff
 # python falsy values: None/False/0/''/{}
 # function implicit return: None

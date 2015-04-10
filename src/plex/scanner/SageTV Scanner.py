@@ -126,8 +126,7 @@ def Scan(path, files, mediaList, subdirs):
             continue
 
         # check to see if TV show or not
-        if not mf.get('IsTVFile'):
-            mylog.warning("File is NOT TV Show! skipping")
+        if not isRecordedTv(mf, airing, showMF):
             continue
 
         showTitle = showMF.get('ShowTitle').encode('UTF-8')
@@ -252,6 +251,31 @@ def Scan(path, files, mediaList, subdirs):
         Stack.Scan(path, files, mediaList, subdirs)
 
     mylog.info('')  # done write empty line so we have good separator for next time
+
+def isRecordedTv(mf, airing, show):
+    '''Is this a recorded TV program that we should process
+
+    @param mf      MediaFile obj from sage
+    @param airing  mf['Airing']
+    @param show    airing['Show']
+    @return        True/False
+    '''
+    # check if this is a sage recording or not
+    if not mf.get('IsTVFile'):
+        mylog.warning("File is NOT TV recording! skipping")
+        return False
+
+    # now check category
+    category = show.get('ShowCategoriesList')
+    if not category:
+        mylog.warning("No ShowCategoriesList! skipping")
+        return False
+
+    if 'Movie' in category:
+        mylog.warning("Show is a movie, skipping: %s", category)
+        return False
+
+    return True;
 
 
 if __name__ == '__main__':

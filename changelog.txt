@@ -1,6 +1,12 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2015-04-10  Raymond Chi <raychi@gmail.com>
+
+  * Fixed movie detection in both scanners.
+      - TV scanner will now skip recorded movies.
+      - Movie scanner will only pull in recorded movies.
+      - Both will still only pull in recorded contents.
 
 2015-04-06  Raymond Chi <raychi@gmail.com>
 
