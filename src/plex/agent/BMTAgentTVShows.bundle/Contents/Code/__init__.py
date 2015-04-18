@@ -19,10 +19,13 @@ import urllib, os
 import plexlog              # log wrapper
 import config               # handles sageplex_cfg.json configuration
 import sagex                # handles communication with SageTV
+import plexapi              # api for misc plex function
+import spvideo              # parsing sage/plex video object
 
 mylog    = None
 myconfig = None
 mysagex  = None
+myplex   = None
 
 
 def Start():
@@ -30,7 +33,7 @@ def Start():
     used to perform extra initialisation tasks such as configuring the
     environment and setting default attributes.
     '''
-    global mylog, myconfig, mysagex
+    global mylog, myconfig, mysagex, myplex
     mylog = plexlog.PlexLog(isAgent=True)  # use Log instead of logging
 
     mylog.info('***** Initializing "SageTV BMT Agent (TV Shows)" *****')
@@ -57,6 +60,8 @@ def Start():
     mysagex = sagex.SageX(sagexHost,
                           useLock=myconfig.getAgentLocking,
                           log=mylog)
+    # create plex api object
+    myplex = plexapi.PlexApi(plexHost, log=mylog)
 
 
 class BMTAgent(Agent.TV_Shows):
@@ -237,11 +242,16 @@ class BMTAgent(Agent.TV_Shows):
                 mylog.debug('rating: %s -> %s', rSource, rTarget)
                 episode.content_rating = rTarget
 
-                # set watched flag
-                isWatched = airing.get('IsWatched')
-                mylog.debug('IsWatched: %s', isWatched)
-                self.setWatchedFlag(media.seasons[s].episodes[e].id,
-                                    isWatched, mylog)
+                sv = spvideo.SageVideo(mf, mylog)
+                # set watched flag and resume position
+                mylog.debug('IsWatched: %s', sv.getWatched())
+                myplex.setWatched(media.seasons[s].episodes[e].id,
+                                  sv.getWatched())
+                if sv.getResume():
+                    mylog.debug('WatchedDuration: %s [%s]',
+                                sv.getResume(), sv.getResumeStr())
+                    myplex.setProgress(media.seasons[s].episodes[e].id,
+                                       sv.getResume())
 
                 # misc stuff
                 mfprops = mf.get('MediaFileMetadataProperties')
@@ -435,18 +445,7 @@ class BMTAgent(Agent.TV_Shows):
         else:
             mylog.debug('episode.thumbs already has data')
 
-    def setWatchedFlag(self, id, isWatched, mylog):
-        '''Set the watched/not-watched flag on media in PLEX
 
-        @param id         plex media id
-        @param isWatched  true/false
-        '''
-        url = (myconfig.getPlexHost() +
-               (':/%s?key=%s&identifier=com.plexapp.plugins.library' %
-                ('scrobble' if isWatched else 'unscrobble', id)))
-        try:
-            mylog.debug('%s: %s', 'setWatchedFlag', url)
-            input = urllib.urlopen(url)
-        except IOError, e:
-            mylog.error("setWatchedFlag: failed to open url: %s: %s",
-                        url, str(e))
+# useful stuff
+# python falsy values: None/False/0/''/{}
+# function implicit return: None

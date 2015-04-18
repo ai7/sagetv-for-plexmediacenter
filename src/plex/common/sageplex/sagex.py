@@ -37,6 +37,10 @@ def unicodeToStr(obj):
         return obj # leave numbers and booleans alone
 
 
+######################################################################
+# SageX class
+######################################################################
+
 class SageX(object):
     '''Class that handles talking to a sagex service via HTTP interface'''
 
@@ -145,14 +149,19 @@ class SageX(object):
         if not data:
             return
 
-        # decode json if specified
-        if encoder == 'json':
+        if encoder != 'json':
+            return data
+
+        # now decode json
+        try:
             if self.isAgent:
                 s1 = JSON.ObjectFromString(data)
             else:
                 s1 = json.JSONDecoder().decode(data)
-        # is this needed?
-        return unicodeToStr(s1)
+            # is this needed?
+            return unicodeToStr(s1)
+        except ValueError, e:
+            self.log.error("call: json decode failed: %s", str(e))
 
     # API implemented in plex.js
     def getMediaFileForName(self, filename):

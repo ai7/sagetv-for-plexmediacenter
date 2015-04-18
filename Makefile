@@ -14,10 +14,16 @@ REL_PHASE     = beta
 SCANNER_TV    = $(STAGE_DIR)/plex/Scanners/Series
 SCANNER_MOVIE = $(STAGE_DIR)/plex/Scanners/Movies
 AGENT_DIR     = $(STAGE_DIR)/plex/Plug-ins
+SYNCTOOL_DIR  = $(STAGE_DIR)/plex/synctool
 
-AGENT_COMMON  = plexlog.py config.py sagex.py
+AGENT_COMMON  = plexlog.py config.py sagex.py plexapi.py spvideo.py
 
-all: sagex scanner agent zip
+# cx freeze
+PYTHON_DIR    = c:/devtools/python27
+PYTHON_EXE    = $(PYTHON_DIR)/python.exe
+CXFREEZE      = $(PYTHON_EXE) $(PYTHON_DIR)/Scripts/cxfreeze
+
+all: sagex scanner agent synctool zip
 
 ######################################################################
 
@@ -53,6 +59,15 @@ agent:
 	    "$(AGENT_DIR)/BMTAgentTVShows.bundle/Contents/Code"; \
         done
 
+synctool:
+	@echo "*** building sync tool ***"
+	mkdir -p $(SYNCTOOL_DIR)/python
+	# copy main file
+	cp "$(SRC_DIR)/plex/tools/sync/sageplex_sync.py" "$(SYNCTOOL_DIR)/python"
+	# copy library to each scanner's sub folder
+	cp -r $(SRC_DIR)/plex/common/sageplex "$(SYNCTOOL_DIR)/python"
+	cd "$(SYNCTOOL_DIR)/python" && $(CXFREEZE) sageplex_sync.py --target-dir ../win32
+
 zip:
 	@echo "*** producing zipfile ***"
 	cd $(STAGE_DIR) && zip -9rX \
@@ -60,6 +75,7 @@ zip:
 
 clean:
 	rm -rf $(BUILD_DIR)
+	rm -rf $(SRC_DIR)/plex/common/sageplex/*.pyc
 
 ######################################################################
 

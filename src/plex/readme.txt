@@ -4,3 +4,4 @@ Folder Description
 * agent:        custom Agent for Plex Media Server
 
 * common:       common code for scanner/agent
+* tools:        useful tools
