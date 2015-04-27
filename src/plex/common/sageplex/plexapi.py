@@ -123,10 +123,11 @@ class PlexApi(object):
                                ('time', time) ])
         return self.openUrl(url)
 
-    def listSections(self):
+    def listSections(self, byName=False):
         '''List the library sections
 
-        @return  dict of sections by id with attr id/title/type
+        @param byName  whether to index return result by name
+        @return        dict of sections by id with attr id/title/type
         '''
         url = ('%s%s' % (self.PLEX_HOST, '/library/sections'))
         ans = self.openUrl(url, xml=True)
@@ -137,7 +138,10 @@ class PlexApi(object):
                 x['id'] = e1.get('key')
                 x['title'] = e1.get('title')
                 x['type'] = e1.get('type')
-                result[x['id']] = x
+                if byName:
+                    result[x['title']] = x
+                else:
+                    result[x['id']] = x
             return result
 
     def joinPath(self, path, newPath):

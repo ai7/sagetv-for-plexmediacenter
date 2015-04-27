@@ -1,12 +1,13 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
-2015-04-18  Raymond Chi <raychi@gmail.com>
+2015-04-27  Raymond Chi <raychi@gmail.com>
 
-  * Set resume position in PLEX video during import
+  * Set resume position in PLEX video during Agent scan.
   * Added sageplex_sync tool to sync watch status independently
       - standalone tool to synchronize watched/resume status
       - both python and win32 packaged binary provided
+  * Tested on Mac. Works, no code changes required.
 
 2015-04-10  Raymond Chi <raychi@gmail.com>
 
