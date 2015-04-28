@@ -18,10 +18,8 @@
 # Reference:
 #   https://github.com/plexinc-plugins/Scanners.bundle/blob/master/Contents/Resources/Series/Plex%20Series%20Scanner.py
 
-import re, os, os.path, sys, logging
+import re, os, os.path, sys, logging, datetime
 import Media, VideoFiles, Stack, Utils
-
-from datetime import date
 
 LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
 
@@ -144,20 +142,23 @@ def Scan(path, files, mediaList, subdirs):
         # originalairdate is blank use recordeddate year
         showYear = showMF.get('ShowYear').encode('UTF-8')
         mylog.debug('ShowYear: %s', showYear)
+
+        # always try to get the airDate as we need it later
+        airDate = None
+        startTime = float(showMF.get('OriginalAiringDate') // 1000)
+        recordTime = float(airing.get('AiringStartTime') // 1000)
+        if (startTime > 0):
+            airDate = datetime.date.fromtimestamp(startTime)
+        elif (recordTime > 0):
+            airDate = datetime.date.fromtimestamp(recordTime)
+        else:
+            airDate = datetime.datetime.now()
+            mylog.warning('No OriginalAiringDate/AiringStartTime! '
+                          'Using today as airDate: %s', airDate)
+
         if not showYear:
-            startTime = float(showMF.get('OriginalAiringDate') // 1000)
-            recordTime = float(airing.get('AiringStartTime') // 1000)
-            if (startTime > 0):
-                airDate = date.fromtimestamp(startTime)
-                mylog.warning('Setting show year from OriginalAiringDate: %s', airDate)
-                showYear = int(airDate.year)
-            elif (recordTime > 0):
-                airDate = date.fromtimestamp(recordTime)
-                mylog.warning('Setting show year from AiringStartTime: %s', airDate)
-                showYear = int(airDate.year)
-            else:
-                showYear = 2012  # TODO: better default?
-                mylog.warning('Setting show year to default: %d', 2015)
+            mylog.warning('Setting show year from airDate: %s', airDate)
+            showYear = int(airDate.year)
         else:
             showYear = int(showYear)
 
@@ -174,8 +175,33 @@ def Scan(path, files, mediaList, subdirs):
         # if there is no season or episode number, default
         # it to 0 so that Plex can still pull it in
         if not ep_num:
-            ep_num = int(airing.get('AiringID'))
-            mylog.warning('No episode number, setting ep_num to AiringID: %d', ep_num)
+            # AiringIDs are strictly internal to Wiz.bin and vary from
+            # one Sage installation to another. So lets not use it.
+            # ep_num = int(airing.get('AiringID'))
+
+            # first try last 4 digit of ShowExternalID. This is what
+            # sage uses in its UI and represent zip2it's episode-id.
+            mylog.warning('No episode number, trying to set a suitable one ...')
+            programId = showMF.get('ShowExternalID')
+            if programId:
+                # http://forums.schedulesdirect.org/viewtopic.php?f=8&t=41
+                # MV+10-12 digits for movies
+                # SP+10-12 digits for sports
+                # EP+SERIESID+EPISODEID for a series where episode info is known
+                # SH+SERIESID+0000 for a series where episode info is *not* known.
+                #    SERIESID could be 6 or 8 chars
+                ep_num = programId[-4:] # last 4 chars
+                ep_num = str(int(ep_num))
+                if ep_num == '0':  # all 0, can't use
+                    mylog.warning('ShowExternalID[-4:] is all zero: %s', programId)
+                    ep_num = None
+                else:
+                    mylog.warning('Setting ep_num to ShowExternalID[-4:]: %s', ep_num)
+            # next we try airing date
+            if not ep_num:
+                ep_num = airDate.strftime('%Y%m%d')
+                mylog.warning('Setting ep_num to airDate: %s', ep_num)
+
         if not s_num:
             s_num = showYear
             mylog.warning("Show number is 0, setting to show year: %d", s_num)
