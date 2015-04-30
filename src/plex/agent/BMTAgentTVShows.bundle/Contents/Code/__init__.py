@@ -242,16 +242,8 @@ class BMTAgent(Agent.TV_Shows):
                 mylog.debug('rating: %s -> %s', rSource, rTarget)
                 episode.content_rating = rTarget
 
-                sv = spvideo.SageVideo(mf, mylog)
-                # set watched flag and resume position
-                mylog.debug('IsWatched: %s', sv.getWatched())
-                myplex.setWatched(media.seasons[s].episodes[e].id,
-                                  sv.getWatched())
-                if sv.getResume():
-                    mylog.debug('WatchedDuration: %s [%s]',
-                                sv.getResume(), sv.getResumeStr())
-                    myplex.setProgress(media.seasons[s].episodes[e].id,
-                                       sv.getResume())
+                # set watch flag and resume position
+                self.setWatchStatus(mf, airing, media, s, e, mylog)
 
                 # misc stuff
                 mfprops = mf.get('MediaFileMetadataProperties')
@@ -444,6 +436,55 @@ class BMTAgent(Agent.TV_Shows):
                 episode.thumbs[thumb_url] = Proxy.Media(faThumb)
         else:
             mylog.debug('episode.thumbs already has data')
+
+    def setWatchStatus(self, mf, airing, media, s, e, mylog):
+        '''Set watched/unwatched and resume position
+
+        @param mf
+        @param airing
+        @param media
+        @param s
+        @param e
+        @param mylog   local copy with header
+        '''
+        sv = spvideo.SageVideo(mf, mylog)
+        mylog.debug('IsWatched: %s', sv.getWatched())
+        # first set the watched status, we need to do this first
+        # before resume position as setting this will clear any resume
+        # position on file.
+        myplex.setWatched(media.seasons[s].episodes[e].id,
+                          sv.getWatched())
+        # now set the resume position
+        s_resume = sv.getResume()
+        if not sv.getResume():
+            return
+        mylog.debug('WatchedDuration: %s [%s]',
+                    sv.getResume(), sv.getResumeStr())
+        one_min = 60*1000
+        # if pos is within 1 min, ignore, as plex will ignore it
+        if s_resume <= one_min:
+            mylog.debug('ignoring resume position under 1 minute')
+            return
+        # if pos is less 1 min of ending
+        airingDuration = airing.get('AiringDuration')
+        if airingDuration:
+            # ignore ending resume position depending on show length
+            airingDuration = int(airingDuration)
+            diff = airingDuration - s_resume
+            if airingDuration <= 60*one_min:
+                # for 30/60 minute show, ignore last 2 minute
+                if diff <= 2 * one_min:
+                    mylog.debug('ignoring resume position 2 min from ending')
+                    return
+            else:
+                # anything longer ignore last 5%
+                if diff <= (airingDuration*.05):
+                    mylog.debug('ignoring resume position 5% from ending')
+                    return
+        else:
+            mylog.warning('no AiringDuration field!')
+        # all OK, set it
+        myplex.setProgress(media.seasons[s].episodes[e].id, s_resume)
 
 
 # useful stuff
