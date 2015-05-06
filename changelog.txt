@@ -2,9 +2,11 @@
                               ChangeLog
 
 2015-05-06  Raymond Chi <raychi@gmail.com>
+
+  * set a more intelligent episode no if one is not available.
+  * Skip setting resume pos if within 5% of ending.
   * Added option to add/delete/refresh library to sync tool.
       - To bypass a PLEX web UI bug for adding library
-  * Skip setting resume pos if within 5% of ending.
 
 2015-04-27  Raymond Chi <raychi@gmail.com>
 
@@ -44,7 +46,7 @@
       - used python docstring for in python files.
       - the source code should be significantly easier to follow for
         new contributors.
-  
+
   * sagex\services\plex.js code cleanup/fix:
       - fixed loop: continue -> break
       - stop outer loop when mediaFile has a value. The previous code
