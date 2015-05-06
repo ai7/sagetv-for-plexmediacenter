@@ -1,6 +1,11 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2015-05-06  Raymond Chi <raychi@gmail.com>
+  * Added option to add/delete/refresh library to sync tool.
+      - To bypass a PLEX web UI bug for adding library
+  * Skip setting resume pos if within 5% of ending.
+
 2015-04-27  Raymond Chi <raychi@gmail.com>
 
   * Set resume position in PLEX video during Agent scan.

@@ -6,7 +6,7 @@
 #
 ######################################################################
 
-import urllib
+import urllib, urllib2
 
 try:
     import xml.etree.cElementTree as ET
@@ -51,6 +51,8 @@ class PlexApi(object):
     def openUrl(self, url, xml=False, log=True):
         '''Open the url and get the data returned
 
+        This uses urllib and default HTTP GET
+
         @param url  URL to open
         @param xml  whether to return data as XML object
         @param log  whether to write debug log entry
@@ -86,11 +88,7 @@ class PlexApi(object):
         @return         url for making the PLEX API call
         '''
         # first construct the k1=v1&k2=v2 ...
-        pstr = '';
-        for (k, v) in values:
-            if pstr:
-                pstr += '&'
-            pstr += str(k) + '=' + urllib.quote(str(v))
+        pstr = urllib.urlencode(values)
 
         # now construct the URL such as
         # /:/scrobble?key=12&identifier=com.plexapp.plugins.library
@@ -215,6 +213,122 @@ class PlexApi(object):
             # append key to path, and recurse
             newPath = self.joinPath(path, childKey)
             self.walkPlex(newPath, childKey, leafCb, level+1)
+
+    def openUrlPost(self, url, values={}, xml=True, method='POST'):
+        '''Open the url and get the data returned
+
+        This uses urllib2 and HTTP method such as POST
+
+        @param url     URL to open
+        @param values  parameters for method
+        @param xml     whether to return data as XML object
+        @param method  HTTP method (POST/DELETE/..)
+        @return        data from server or None
+        '''
+        # encode the list parameters into
+        #   k1=v1&k2=v2&...
+        # individual value can be a list, ie, k1 = [v1, v2] becomes
+        #   k1=v1&k1=v2..
+        data = urllib.urlencode(values, True)
+        if data:
+            url += '?' + data
+
+        # now create the request object.
+        #
+        # normally we can pass in url and data to its respective
+        # parameter in Request(), but for some reason PLEX does not
+        # like/look at the params this way and throws a bad request
+        # error. It seems to only work if the parameters are encoded
+        # on the URL directly. But if we do that urllib2 will use get
+        # instead of post, so we override the method explicitly.
+        #
+        # another option is to pass data in as 2nd parameter to
+        # Request(), but doing that doesn't seem as elegant
+        req = urllib2.Request(url)
+        req.get_method = lambda: method  # override method
+
+        result = None
+        try:
+            self.log.debug('openUrlPost[%s]: %s', method, url)
+            response = urllib2.urlopen(req)
+            result = response.read()
+            if result and xml:
+                result = ET.fromstring(result)
+        except urllib2.URLError, e:
+            self.log.error("openUrlPost[%s]: failed: %s", method, str(e))
+            result = None
+        except ET.ParseError, e:
+            self.log.error("openUrlPost[%s]: XML parse failed: %s", method, str(e))
+            result = None
+
+        return result
+
+    def createSection(self, name, path,
+                      stype='show',
+                      agent='com.plexapp.agents.bmtagenttvshows',
+                      scanner='SageTV Scanner'):
+        '''Create a PLEX library section
+
+        @param name     section name
+        @param path     path, or list of path to section
+        @param stype    section type (movie/show/photo/artist)
+        @param agent    Agent to use
+        @param scanner  Scanner name to use
+        @return         XML object
+        '''
+        self.log.debug('createSection: %s [%s]', name, path)
+
+        # http://host:port/library/sections
+        url = ('%s%s' % (self.PLEX_HOST, '/library/sections'))
+
+        values = { 'type' : stype,
+                   'agent' : agent,
+                   'scanner' : scanner,
+                   'language' : 'en',
+                   'name' : name,
+                   'location' : path }
+
+        ans = self.openUrlPost(url, values)
+
+        # sanity check result
+        TAG_TYPE = 'MediaContainer'
+        if not ans:
+            self.log.error("createSection: url returned no data")
+            return
+        if ans.tag != TAG_TYPE:
+            self.log.error("createSection: expecting <%s> but got: <%s>",
+                           TAG_TYPE, ans.tag)
+            return
+        val = ans.get('size')
+        if val and int(val) < 1:
+            self.log.warning("createSection: <%s> size=%s, skipping",
+                             TAG_TYPE, ans.get('size'))
+            return
+        # now loop through the child elements
+        for e1 in ans:
+            title = e1.attrib['title']
+            childKey = e1.attrib['key']
+            print 'Created library section [%s]: %s' % (childKey, title)
+
+        return ans
+
+    def deleteSection(self, pid):
+        '''Delete a PLEX library section
+
+        @param pid  PLEX library id
+        '''
+        url = ('%s/library/sections/%s' % (self.PLEX_HOST, pid))
+        self.log.debug('deleteSection: %s', url)
+        return self.openUrlPost(url, xml=False, method='DELETE')
+
+    def refreshSection(self, pid):
+        '''Refresh a PLEX library section
+
+        @param pid  PLEX library id
+        '''
+        url = ('%s/library/sections/%s/refresh' % (self.PLEX_HOST, pid))
+        self.log.debug('refreshSection: %s', url)
+        return self.openUrl(url)
 
 
 ######################################################################

@@ -271,6 +271,7 @@ def processVideo(node, log):
         return
     sv = sageplex.spvideo.SageVideo(mf, log)
     s_resume = sv.getResume()
+    airing = mf.get('Airing')
 
     # if in sync (or both 0), no changes needed
     if p_resume == s_resume:
@@ -300,6 +301,17 @@ def processVideo(node, log):
 
     # plex is out of sync
     if p_resume < s_resume:
+        # first check if ending is within 5% of length, if so, ignore
+        airingDuration = airing.get('AiringDuration')
+        if airingDuration:
+            # ignore ending resume position depending on show length
+            airingDuration = int(airingDuration)
+            diff = airingDuration - s_resume
+            if diff <= (airingDuration*.05):
+                # in sync if within 5% of ending
+                g_stat.insync += 1
+                print '[OK < 5%/ENDING]'
+                return
         g_stat.addPlex(pv.id, pv.title, pv.getResumeStr(None),
                        sv.getResumeStr(None))
         print '[PLEX out of sync]'
@@ -380,6 +392,78 @@ def mainSync(args):
 
 
 ######################################################################
+# add sage tv/movie sections
+######################################################################
+
+def mainAdd(args):
+    '''Add a PLEX library section'''
+    if args.addtv:
+        ans = plexapi.createSection(args.addtv[0], args.addtv[1:])
+    elif args.addmovie:
+        ans = plexapi.createSection(args.addmovie[0], args.addmovie[1:],
+                                    stype='movie',
+                                    agent='com.plexapp.agents.imdb',
+                                    scanner='SageTV Movie Scanner')
+    else:
+        print 'mainAdd: unsupported case'
+        return
+
+    if not ans:
+        print 'Failed to add PLEX section. Check log for details.'
+        return
+
+    mylog.info('PLEX library created.')
+
+
+######################################################################
+# delete PLEX library sections
+######################################################################
+
+def mainDelete(args):
+    '''Delete a PLEX library section'''
+    # get the section name
+    sections = plexapi.listSections()
+    if not sections:
+        print 'No libraries found on PLEX server.'
+        return
+    s = sections.get(args.delsec)
+    if not s:
+        print 'Library [%s] not found!' % args.delsec
+        return
+    # ask user to confirm
+    if not askUser('Are you sure you want to delete the library %s?\n\n'
+                   'This cannot be undone!\n' % s.get('title'),
+                   'Delete Library [%s]?' % args.delsec):
+        return
+    # now delete it
+    ans = plexapi.deleteSection(args.delsec)
+    if ans is None:
+        print 'Library not found: %s' % args.delsec
+    else:
+        print 'Library %s deleted.' % args.delsec
+
+
+######################################################################
+# refresh PLEX library sections
+######################################################################
+
+def mainRefresh(args):
+    '''Refresh a PLEX library section'''
+    # get the section name
+    sections = plexapi.listSections()
+    if not sections:
+        print 'No libraries found on PLEX server.'
+        return
+    s = sections.get(args.refresh)
+    if not s:
+        print 'Library [%s] not found!' % args.refresh
+        return
+    # now do the refresh
+    print 'Refreshing library [%s]: %s' % (args.refresh, s.get('title'))
+    plexapi.refreshSection(args.refresh)
+
+
+######################################################################
 # main functions
 ######################################################################
 
@@ -401,7 +485,6 @@ def parseArgs():
     group.add_argument('-s', '--sync',
                         help='sync watch status',
                         action='store_true')
-
     # rest of parameters
     parser.add_argument('-m', '--media',
                         help='ID is media-id, not section-id',
@@ -413,11 +496,26 @@ def parseArgs():
                         help='ignore if pos within initial x seconds',
                         default=60)
     parser.add_argument('-p', dest='prompt',
-                        help='confirm each update',
+                        help='confirm each sync update',
                         action='store_true')
     parser.add_argument('-n', dest='simulate',
-                        help='do nothing, simulate operation',
+                        help='do nothing, simulate sync operation',
                         action='store_true')
+    # stuff for adding a library
+    group.add_argument('--addtv', metavar=('NAME', 'PATH'), nargs='+',
+                       help='add PLEX library for Sage TV shows',
+                       default=False)
+    group.add_argument('--addmovie', metavar=('NAME', 'PATH'), nargs='+',
+                       help='add PLEX library for Sage Movies',
+                       default=False)
+    # deleting a library
+    group.add_argument('--delsec', metavar='ID',
+                       help='delete a PLEX library section',
+                       default=None)
+    # refresh a library
+    group.add_argument('--refresh', metavar='ID',
+                       help='refresh a PLEX library section',
+                       default=None)
 
     # 0 or more IDs to operate on, this could be library section id
     # or media id.
@@ -455,8 +553,18 @@ def parseArgs():
             i += 1
         args.positionSec = s * 1000  # in ms
 
+    # python argparse don't support 2+ as nargs, so check here
+    if args.addtv and len(args.addtv) < 2:
+        print 'Error: must specify at least one path with --addtv option!'
+        return
+    if args.addmovie and len(args.addmovie) < 2:
+        print 'Error: must specify at least one path with --addmovie option!'
+        return
+
     # any work to do?
-    if args.list or args.id:
+    if (args.list or args.id or
+        args.addtv or args.addmovie or
+        args.delsec or args.refresh):
         return args
     else:
         parser.print_help()
@@ -501,6 +609,12 @@ def main():
     g_stat = Stat()
     if args.list:
         mainList(args)
+    elif args.addtv or args.addmovie:
+        mainAdd(args)
+    elif args.delsec:
+        mainDelete(args)
+    elif args.refresh:
+        mainRefresh(args)
     else:
         mainSync(args)
         mylog.info('')  # done, write empty line so we have good separator for next time
