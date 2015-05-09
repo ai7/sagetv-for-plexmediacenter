@@ -99,18 +99,21 @@ class PlexLog(object):
             return
         # calculate level
         lvl = logging.DEBUG if debug else logging.INFO
-        # create new rotating log handler
-        fileh = logging.handlers.RotatingFileHandler(filename, 'a',
-                                                     maxBytes=maxsize,
-                                                     backupCount=backups)
-        formatter = logging.Formatter(log_format)
-        fileh.setFormatter(formatter)
-        # update root logging's handler
-        log = logging.getLogger()  # root logger
-        log.setLevel(lvl)          # update level
-        for hdlr in log.handlers:  # remove all old handlers
-            log.removeHandler(hdlr)
-        log.addHandler(fileh)      # set the new handler
+        try:
+            # create new rotating log handler
+            fileh = logging.handlers.RotatingFileHandler(filename, 'a',
+                                                         maxBytes=maxsize,
+                                                         backupCount=backups)
+            formatter = logging.Formatter(log_format)
+            fileh.setFormatter(formatter)
+            # update root logging's handler
+            log = logging.getLogger()  # root logger
+            log.setLevel(lvl)          # update level
+            for hdlr in log.handlers:  # remove all old handlers
+                log.removeHandler(hdlr)
+            log.addHandler(fileh)      # set the new handler
+        except IOError, e:
+            self.error('updateLoggingConfig: failed to set logfile: %s', str(e))
 
     ## wrapper functions around log()
 

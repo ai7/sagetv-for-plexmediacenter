@@ -30,9 +30,12 @@ CFG_FILE = 'sageplex_cfg.json'
 LOG_FILE = 'sageplex_scanner.log'
 
 # default PMS data location
-LOC_WIN = '%LOCALAPPDATA%\\Plex Media Server'
-LOC_MAC = '$HOME/Library/Application Support/Plex Media Server'
-LOC_LIN = '$PLEX_HOME/Library/Application Support/Plex Media Server'
+LOC_WIN = [ '%LOCALAPPDATA%\\Plex Media Server',
+            '%USERPROFILE%\\Local Settings\\Application Data\\Plex Media Server' ]
+
+LOC_MAC = [ '$HOME/Library/Application Support/Plex Media Server' ]
+
+LOC_LIN = [ '$PLEX_HOME/Library/Application Support/Plex Media Server' ]
 
 #####
 
@@ -107,14 +110,31 @@ class Config(object):
         # Platform.OS:  MacOSX, Windows or Linux
         platform = platform.lower()
         if (platform == 'win32' or platform == 'windows'):
-            pLoc = LOC_WIN
+            # for windows, scan multiple dirs
+            pLoc = self.checkDirs(LOC_WIN)
         elif (platform == 'darwin' or platform == 'macosx'):
-            pLoc = LOC_MAC
+            pLoc = self.checkDirs(LOC_MAC)
         elif 'linux' in platform:
-            pLoc = LOC_LIN
+            pLoc = self.checkDirs(LOC_LIN)
         else: # unknown, return home
-            pLoc = '$HOME'
-        return os.path.expandvars(pLoc)
+            pLoc = os.path.expandvars('$HOME')
+        return pLoc
+
+    def checkDirs(self, dirList):
+        '''Check the list of dirs and return the 1st one that exists
+
+        @param dirList  directory list that may contain env vars
+        @param return   1st one that exist, or empty
+        '''
+        retval = ''
+        for p in dirList:
+            pe = os.path.expandvars(p)
+            if os.path.isdir(pe):
+                retval = pe
+                break
+            else:
+                self.log.info("Config: path does not exist: %s", p)
+        return retval
 
     def readFile(self, filename):
         '''Read a file and return its content
