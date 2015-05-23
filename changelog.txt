@@ -1,6 +1,11 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2015-05-22  Raymond Chi <raychi@gmail.com>
+
+  * rewrote multi-segment handling code in tv scanner
+  * added multi-segment support to movie scanner
+
 2015-05-06  Raymond Chi <raychi@gmail.com>
 
   * set a more intelligent episode no if one is not available.

@@ -216,52 +216,37 @@ def Scan(path, files, mediaList, subdirs):
 
         # need to handle mutliple recordings for the
         # same physical show i.e. -0.mpg, -1.mpg, -2.mpg
-        valid = False
         m_seg = mf.get('NumberOfSegments')
         if (m_seg > 1):
+            # if show have more than one segment, see if we need to
+            # add this to an existing mediaFile object
             mylog.info("Media has more than 1 segment: %s", m_seg)
-            # x = Saturtday Night Live (season 01, Episode 27) => ['path']
-            counter = 0
-            for value in mediaList:
-                if (value.show == showTitle and
-                    value.name == episodeTitle and
-                    value.season == s_num and
-                    value.episode == ep_num):
-                    if (value.parts[0] < i):
-                        mylog.info("value.parts[0] less than currnet file. "
-                                   "Current file goes at [1]. [0] = %s" %
-                                   mediaList[counter].parts[0])
-                        mediaList[counter].parts.append(i)
-                        stat['added'] += 1
-                        valid = True
-                        mylog.info("new mediaList = %s" % mediaList)
-                        break
-                    elif (value.parts[0] > i):
-                        mylog.info("value.parts[0] greater than current file. "
-                                   "Set [1] = [0] and [0] = i")
-                        mediaList[counter].parts.insert(0,i)
-                        stat['added'] += 1
-                        valid = True
-                        break
-                # Current show not yet found increment and continue
-                counter += 1
-            # END "for value in mediaList"
-            # We have a file with mutliple segments,
-            # and looped through entire mediaList. Not
-            # current in mediaList so add
-            if not valid:
-                mylog.warning("We have a file with mutliple parts in bmt, "
-                              "but not currently in media list. "
-                              "Adding to mediaLiost")
-                tv_show.parts.append(i)
-        else:
-            # Show only has 1 segment. Append
-            mylog.debug("Media file only has 1 segments, done")
-            tv_show.parts.append(i)
+            # first lookup the show in the current added mediaList, if
+            # found, this means we've processed existing segments of
+            # the show, so just add the additional segments
+            mFound = False
+            for mItem in mediaList:
+                # is this the right show
+                if (mItem.show != showTitle or mItem.season != s_num or
+                    mItem.episode != ep_num or mItem.name != episodeTitle):
+                    continue
+                # found the show, add file to show
+                mItem.parts.append(i)  # add to end
+                mItem.parts.sort()     # sort file list lexically
+                mylog.info('Added to existing mediaList obj: %s', mItem)
+                # handled, so break out of search loop
+                stat['added'] += 1
+                mFound = True
+                break
+            if mFound:
+                # multi-segment and used an existing mediaList object,
+                # so done, go to next file. the current tv_show object
+                # is discarded.
+                continue
 
-        if valid:
-            # multi-segment and handled, so done
-            continue
+        # only one segment, or multi-segment but first time,
+        # add the file to the new tv_show object
+        tv_show.parts.append(i)
 
         mylog.info("Adding show to mediaList")
         mediaList.append(tv_show)

@@ -131,9 +131,40 @@ def Scan(path, files, mediaList, subdirs):
         # movie so we can add it to PLEX.
         movie = Media.Movie(showTitle, showYear)
         movie.source = VideoFiles.RetrieveSource(filename)
-        movie.parts.append(i)
 
-        mylog.info("Adding show to mediaList")
+        # need to handle mutliple recordings for the
+        # same physical show i.e. -0.mpg, -1.mpg, -2.mpg
+        m_seg = mf.get('NumberOfSegments')
+        if (m_seg > 1):
+            # if show have more than one segment, see if we need to
+            # add this to an existing mediaFile object
+            mylog.info("Media has more than 1 segment: %s", m_seg)
+            # first lookup the show in the current added mediaList, if
+            # found, this means we've processed existing segments of
+            # the show, so just add the additional segments
+            mFound = False
+            for mItem in mediaList:
+                # is this the right show
+                if (mItem.name != showTitle or mItem.year != showYear):
+                    continue
+                # found the show, add file to show
+                mItem.parts.append(i)  # add to end
+                mItem.parts.sort()     # sort file list lexically
+                mylog.info('Added to existing mediaList obj: %s', mItem)
+                # handled, so break out of search loop
+                stat['added'] += 1
+                mFound = True
+                break
+            if mFound:
+                # multi-segment and used an existing mediaList object,
+                # so done, go to next file. the current tv_show object
+                # is discarded.
+                continue
+
+        # only one segment, or multi-segment but first time,
+        # add the file to the new movie object
+        movie.parts.append(i)
+        mylog.info("Adding movie to mediaList")
         mediaList.append(movie)
         stat['added'] += 1
 
