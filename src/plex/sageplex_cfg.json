@@ -21,7 +21,7 @@
     "ignored":  {
         "log_win"  : "%LOCALAPPDATA%\\Plex Media Server\\Logs\\sageplex_scanner.log",
         "log_mac"  : "$HOME/Library/Logs/sageplex_scanner.log",
-        "log_lin"  : "$PLEX_HOME/Library/Application Support/Plex Media Server/Logs/sageplex_scanner.log",
+        "log_lin"  : "$HOME/Library/Application Support/Plex Media Server/Logs/sageplex_scanner.log",
         "dummy"    : "last"
     }
 }
