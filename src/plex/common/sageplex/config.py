@@ -191,7 +191,10 @@ class Config(object):
         if scanner:
             log = scanner.get('log')
             if log:
-                return os.path.expandvars(log)
+                if '~' in log:
+                    return os.path.expanduser(log)
+                else:
+                    return os.path.expandvars(log)
 
     def getScannerDebug(self):
         '''Return the scanner debug setting'''

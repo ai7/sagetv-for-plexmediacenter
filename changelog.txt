@@ -1,6 +1,10 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2015-06-10  Raymond Chi <raychi@gmail.com>
+
+  * Added Installer for Windows/MacOS/Linux.
+
 2015-06-07  Raymond Chi <raychi@gmail.com>
 
   * fixed CFG path issue when running on linux

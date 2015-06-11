@@ -1,0 +1,33 @@
+                      sagetv-for-plexmediacenter
+                            Install Notes
+
+An installer is provided for installing SageTV for PLEX Media Server
+on your system.
+
+== Prerequisite ==
+
+SageTV Plugins:
+- Batch Metadata Tools (BMT)
+- sagex-services
+
+The plugins must be installed before you run the sageplex installer.
+
+== Install ==
+
+To install, simply run the commands below. This will copy the files to
+the appropriate location in SageTV and PMS, and configures the
+sageplex_cfg.json configuration file based on your input.
+
+You need to restart SageTV/PMS for the changes to take effect.
+
+Windows:  install\win32\sageplex_install.exe -i
+
+MacOS:    python install/sageplex_install.py -i
+Linux:    python install/sageplex_install.py -i
+
+== Uninstall ==
+
+Windows:  install\win32\sageplex_install.exe -u
+
+MacOS:    python install/sageplex_install.py -u
+Linux:    python install/sageplex_install.py -u

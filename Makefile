@@ -8,13 +8,14 @@ SRC_DIR = src
 BUILD_DIR = build
 STAGE_DIR = $(BUILD_DIR)/stage
 
-REL_VERSION   = 8.1.0
+REL_VERSION   = 8.2.0
 REL_PHASE     = beta
 
 SCANNER_TV    = $(STAGE_DIR)/plex/Scanners/Series
 SCANNER_MOVIE = $(STAGE_DIR)/plex/Scanners/Movies
 AGENT_DIR     = $(STAGE_DIR)/plex/Plug-ins
 SYNCTOOL_DIR  = $(STAGE_DIR)/plex/synctool
+INSTALL_DIR   = $(STAGE_DIR)/install
 
 AGENT_COMMON  = plexlog.py config.py sagex.py plexapi.py spvideo.py
 
@@ -23,7 +24,11 @@ PYTHON_DIR    = c:/devtools/python27
 PYTHON_EXE    = $(PYTHON_DIR)/python.exe
 CXFREEZE      = $(PYTHON_EXE) $(PYTHON_DIR)/Scripts/cxfreeze
 
-all: sagex scanner agent synctool zip
+all: stage zip
+
+stage: sagex scanner agent synctool installer
+	cp "readme.md" "$(STAGE_DIR)"
+	cp "changelog.txt" "$(STAGE_DIR)"
 
 ######################################################################
 
@@ -67,6 +72,16 @@ synctool:
 	# copy library to each scanner's sub folder
 	cp -r $(SRC_DIR)/plex/common/sageplex "$(SYNCTOOL_DIR)/python"
 	cd "$(SYNCTOOL_DIR)/python" && $(CXFREEZE) sageplex_sync.py --target-dir ../win32
+
+installer: pyinstall
+
+pyinstall:
+	@echo "*** building pythin installer ***"
+	# copy main file
+	mkdir -p $(INSTALL_DIR)
+	cp "$(SRC_DIR)/install/install.txt" "$(STAGE_DIR)"
+	cp "$(SRC_DIR)/install/python/sageplex_install.py" "$(INSTALL_DIR)"
+	cd "$(INSTALL_DIR)" && $(CXFREEZE) sageplex_install.py --target-dir win32
 
 zip:
 	@echo "*** producing zipfile ***"

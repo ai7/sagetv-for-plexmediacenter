@@ -10,9 +10,8 @@ project hosted on google code.
 
 The code has gotten some much needed love. Performance and stability
 has been improved. Some long standing issues have been addressed. The
-updated code base should be easier to follow and maintain. It is my
-hope that this will enable continued improvements to this project by
-more contributors.
+updated code base should be easier to follow and maintain. I hope this
+will allow the project to be continuously improved and refined.
 
 ## Download
 
@@ -23,26 +22,39 @@ page.
 The `sagetv-for-plexmediacenter-v*-*.zip` file contains the following directories:
 
 ```
++--install
+|  \--win32
 +--plex
 |  +--Plug-ins
 |  |  \--BMTAgentTVShows.bundle
 |  |     \--Contents
 |  |        +--Code
 |  |        \--Resources
-|  \--Scanners
-|     +--Movies
+|  +--Scanners
+|  |  +--Movies
+|  |  |  \--sageplex
+|  |  \--Series
+|  |     \--sageplex
+|  \--synctool
+|     +--python
 |     |  \--sageplex
-|     \--Series
-|        \--sageplex
+|     \--win32
 \--sagetv
    \--sagex
       \--services
 ```
 
+* **`install`** folder contains Installer for Windows/MacOS/Linux.
 * **`plex`** folder contains files for PLEX Media Server.
 * **`sagetv`** folder contains files for SageTV.
 
 ## Install
+
+To install sagetv-for-plexmediacenter automatically, follow the
+install.txt instruction in the install folder and run the appropriate
+installer for your platform.
+
+Follow the instructions below if you wish to perform a manual install.
 
 This assumes you are somewhat familiar with this plugin, SageTV, and
 PLEX Media Server. If not, please take a look at this [Install
