@@ -50,9 +50,9 @@ The `sagetv-for-plexmediacenter-v*-*.zip` file contains the following directorie
 
 ## Install
 
-To install sagetv-for-plexmediacenter automatically, follow the
-install.txt instruction in the install folder and run the appropriate
-installer for your platform.
+To install sagetv-for-plexmediacenter automatically, unzip the
+download, and follow the install.txt instruction in the install folder
+to run the appropriate installer for your platform.
 
 Follow the instructions below if you wish to perform a manual install.
 
