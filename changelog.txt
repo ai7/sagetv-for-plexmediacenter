@@ -1,9 +1,11 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
-2015-06-10  Raymond Chi <raychi@gmail.com>
+2015-06-16  Raymond Chi <raychi@gmail.com>
 
   * Added Installer for Windows/MacOS/Linux.
+  * Detect customized PLEX data location.
+  * Pass SageTV/PLEX dir location to installer.
 
 2015-06-07  Raymond Chi <raychi@gmail.com>
 

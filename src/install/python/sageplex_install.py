@@ -13,10 +13,20 @@ PROG_DESC   = ('Install/Uninstall/Configure SageTV for PLEX Media Server.')
 LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
 
 # default PMS data location
-LOC_WIN = [ r'%LOCALAPPDATA%\Plex Media Server',
-            r'%USERPROFILE%\Local Settings\Application Data\Plex Media Server' ]
-LOC_MAC = [ '~/Library/Application Support/Plex Media Server' ]
-LOC_LIN = [ '~plex/Library/Application Support/Plex Media Server' ]
+PLEX_LOC_WIN = [ r'%LOCALAPPDATA%\Plex Media Server',
+                 r'%USERPROFILE%\Local Settings\Application Data\Plex Media Server' ]
+PLEX_LOC_MAC = [ '~/Library/Application Support/Plex Media Server' ]
+PLEX_LOC_LIN = [ '~plex/Library/Application Support/Plex Media Server' ]
+
+# PLEX registry setting for data location
+PLEX_REG_WIN = [[ r'HKEY_CURRENT_USER',
+                  r'Software\Plex, Inc.\Plex Media Server',
+                  r'LocalAppDataPath' ]]
+
+# SageTV registry location to get install path
+SAGE_REG_WIN = [[ r'HKEY_LOCAL_MACHINE',
+                  r'SOFTWARE\Frey Technologies',
+                  r'LastInstallDir' ]]
 
 CFG_FILE = 'sageplex_cfg.json'
 
@@ -36,15 +46,26 @@ def getRegValue(root, key, value):
     '''Read a registry setting
 
     @param root   root, such as HKEY_LOCAL_MACHINE
-    @param path   registry path
-    @param key    key to retrieve value for
+    @param key    registry path
+    @param value  key to retrieve value for
     @return       registry value or None
     '''
     logging.info('Querying REGKEY: %s\\%s', key, value)
+
+    # convert from str to int if necessary
+    if isinstance(root, str):
+        if root == 'HKEY_LOCAL_MACHINE':
+            root = wreg.HKEY_LOCAL_MACHINE
+        elif root == 'HKEY_CURRENT_USER':
+            root = wreg.HKEY_CURRENT_USER
+        else:
+            log.error('getRegValue: unsupported root: %s', root)
+            return
+
     try:
-        aReg = wreg.ConnectRegistry(None, wreg.HKEY_LOCAL_MACHINE)
-        aKey = wreg.OpenKey(aReg, r'SOFTWARE\Frey Technologies')
-        val, vtype = wreg.QueryValueEx(aKey, "LastInstallDir")
+        aReg = wreg.ConnectRegistry(None, root)
+        aKey = wreg.OpenKey(aReg, key)
+        val, vtype = wreg.QueryValueEx(aKey, value)
         logging.info('  value: %s', val)
     except OSError as e:
         logging.info('  not found: %s', e)
@@ -157,6 +178,23 @@ def askSettings(msg, default):
 # detection functions
 ######################################################################
 
+def validateSageDir(sageDir, log=True):
+    '''Validate SageTV directory
+
+    @param sageDir  dir where SageTV.exe is located
+    @return         True if dir appears valid
+    '''
+    sageExe = os.path.join(sageDir, r'SageTV.exe')
+    if not os.path.isfile(sageExe):
+        if log:
+            logging.error('SageTV.exe not found: %s', sageExe);
+        return
+    if log:
+        logging.info('Found: %s', sageExe);
+
+    return True
+
+
 def detectSageWin():
     '''Detect SageTV install location
 
@@ -167,13 +205,15 @@ def detectSageWin():
 
     # look up sagetv location in
     # HKEY_LOCAL_MACHINE\SOFTWARE\Frey Technologies\LastInstallDir
-    val = getRegValue(wreg.HKEY_LOCAL_MACHINE,
-                      r'SOFTWARE\Frey Technologies',
-                      'LastInstallDir')
+    val = None
+    for p in SAGE_REG_WIN:
+        val = getRegValue(p[0], p[1], p[2])
+        if val:
+            print '[%s]' % val
+            break;
     if not val:
         print '[Not Found]'
         return
-    print '[%s]' % val
 
     # do some sanity test
     if not os.path.isdir(val):
@@ -181,13 +221,11 @@ def detectSageWin():
         print 'SageTV dir does not exist:', val
         return
 
+    # we need to append 'SageTV' to path stored in registry
     sagePath = os.path.join(val, 'SageTV')
-    sageExe = os.path.join(val, r'SageTV\SageTV.exe')
-    if not os.path.isfile(sageExe):
-        logging.error('SageTV.exe not found: %s', sageExe);
+    if not validateSageDir(sagePath):
         print 'SageTV.exe not found:', sageExe
         return
-    logging.info('Found: %s', sageExe);
 
     return sagePath
 
@@ -199,8 +237,22 @@ def detectSage():
     # no mac/lin version
 
 
+def validatePlexDir(plexDir, log=True):
+    '''Validate PLEX Data directory
+
+    @param plexDir  PLEX data directory
+    @return         True if dir appears valid
+    '''
+    if not os.path.isdir(os.path.join(plexDir, 'Plug-ins')):
+        if log:
+            logging.error('Data folder missing Plug-ins: %s', plexDir)
+        return
+
+    return True
+
+
 def detectPlexLoc(pList):
-    '''Detect PLEX Data location on Windows
+    '''Detect PLEX Data location for win/mac/lin
 
     @param pList  list of locations to check, expanded
     @return       PLEX data location
@@ -217,8 +269,40 @@ def detectPlexLoc(pList):
         return
 
     # now sanity check the directory
-    if not os.path.isdir(os.path.join(ploc, 'Plug-ins')):
-        logging.error('Data folder missing Plug-ins: %s', ploc)
+    if not validatePlexDir(ploc):
+        return
+
+    return ploc
+
+
+def detectPlexLocReg(pList):
+    '''Detect PLEX Data location using windows registry
+
+    @param pList  list of registry location to check
+    @return       PLEX data location
+    '''
+    logging.info('Detecting PLEX Data folder via registry ...')
+
+    ploc = None
+    for p in pList:
+        val = getRegValue(p[0], p[1], p[2])
+        if val:
+            if os.path.isdir(val):
+                val = os.path.join(val, 'Plex Media Server')
+                if os.path.isdir(val):
+                    ploc = val
+                    logging.info('  Found: %s', val)
+                    break
+                else:
+                    logging.info('  dir not exist: %s', val)
+            else:
+                logging.info('PLEX LocalAppDataPath dir not exist: %s', val)
+
+    if not ploc:
+        return
+
+    # now sanity check the directory
+    if not validatePlexDir(ploc):
         return
 
     return ploc
@@ -240,11 +324,14 @@ def detectPlex():
     ploc = None
 
     if isWin:
-        ploc = detectPlexLoc(expandVarsUser(x) for x in LOC_WIN)
+        # for windows search first the plex reg location
+        ploc = detectPlexLocReg(PLEX_REG_WIN)
+        if not ploc:
+            ploc = detectPlexLoc(expandVarsUser(x) for x in PLEX_LOC_WIN)
     elif isMac:
-        ploc = detectPlexLoc(expandVarsUser(x) for x in LOC_MAC)
+        ploc = detectPlexLoc(expandVarsUser(x) for x in PLEX_LOC_MAC)
     elif isLin:
-        ploc = detectPlexLoc(expandVarsUser(x) for x in LOC_LIN)
+        ploc = detectPlexLoc(expandVarsUser(x) for x in PLEX_LOC_LIN)
     else:
         assert(0)
 
@@ -374,7 +461,7 @@ def copyPlexFiles(plexPath):
             return True
 
     # configure sageplex_cfg.json file
-    if not configCfgFile(dst):
+    if not configCfgFile(dst, plexPath):
         return
 
     return True
@@ -500,14 +587,15 @@ def agentLogLoc(scanLog):
     return os.path.join(logdir, bmtlog)
 
 
-def configCfgFile(cfg):
+def configCfgFile(cfg, plexPath):
     '''Configures the sageplex_cfg.json file
 
     Read the json file, prompt user for various settings, and write
     updated setting back to json file if changed.
 
-    @param cfg:  path to sageplex_cfg.json
-    @return      True on success
+    @param cfg:      path to sageplex_cfg.json
+    @param plexPath  PLEX data directory
+    @return          True on success
     '''
     print ''
     data = None
@@ -568,12 +656,8 @@ def configCfgFile(cfg):
 
     # finally update the scanner log location based on platform
     old_log = data['scanner']['log']
-    if isWin:
-        new_log = data['ignored']['log_win']
-    elif isMac:
-        new_log = data['ignored']['log_mac']
-    elif isLin:
-        new_log = data['ignored']['log_lin']
+    logPath = os.path.join(plexPath, 'Logs')
+    new_log = os.path.join(logPath, 'sageplex_scanner.log')
 
     if old_log != new_log:
         # save setting
@@ -614,7 +698,7 @@ def runConfig(plexPath):
         logging.error('File not found: %s', cfgPath)
         return
 
-    configCfgFile(cfgPath)
+    configCfgFile(cfgPath, plexPath)
 
 
 ######################################################################
@@ -694,11 +778,26 @@ def parseArgs():
                        help='Configure sageplex_cfg.json file',
                        action='store_true')
 
+    parser.add_argument('--sagedir',
+                        help='SageTV program directory (SageTV.exe)',
+                        default=None)
+    parser.add_argument('--plexdir',
+                        help='PLEX data directory',
+                        default=None)
+
     # parse the arguments
     args = parser.parse_args()
     # print args
 
     # do some sanity check on parameters
+    if args.sagedir:
+        if not validateSageDir(args.sagedir, False):
+            print 'Error: invalid SageTV directory:', args.sagedir
+            return
+    if args.plexdir:
+        if not validatePlexDir(args.plexdir, False):
+            print 'Error: invalid PLEX data directory:', args.plexdir
+            return
 
     # any work to do?
     if (args.install or args.uninstall or args.config):
@@ -809,11 +908,18 @@ def main():
         return
     g_root = rloc
 
-    # detect sagetv/plex location
-    sagePath = detectSage()
-    plexPath = detectPlex()
+    # detect sagetv/plex location if not specified
+    if not args.sagedir:
+        args.sagedir = detectSage()
+    else:
+        print 'Specified SageTV directory:', args.sagedir
 
-    if (not sagePath) and (not plexPath):
+    if not args.plexdir:
+        args.plexdir = detectPlex()
+    else:
+        print 'Specified PLEX data directory:', args.plexdir
+
+    if (not args.sagedir) and (not args.plexdir):
         if isWin:
             print 'SageTV and PLEX not detected, abort!'
         else:
@@ -822,11 +928,11 @@ def main():
 
     # now do the real work
     if args.install:
-        runInstall(sagePath, plexPath)
+        runInstall(args.sagedir, args.plexdir)
     elif args.uninstall:
-        runUninstall(sagePath, plexPath)
+        runUninstall(args.sagedir, args.plexdir)
     elif args.config:
-        runConfig(plexPath)
+        runConfig(args.plexdir)
 
 
 if __name__ == '__main__':
@@ -839,7 +945,7 @@ if __name__ == '__main__':
     elif 'linux' in sys.platform:
         isLin = True
     else:
-        print 'Unknown platform: ', sys.platform
+        print 'Unsupported platform: ', sys.platform
         sys.exit(1)
     # do work
     sys.exit(main())
