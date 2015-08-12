@@ -1022,6 +1022,6 @@ if __name__ == '__main__':
         isLin = True
     else:
         print 'Unsupported platform: ', sys.platform
-        sys.exit(1)
+        sys.exit(50)  # ERROR_NOT_SUPPORTED
     # do work
     sys.exit(main())

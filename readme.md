@@ -4,7 +4,7 @@ SageTV Plug-in for PLEX Media Server
 
 ## Overview
 
-This is a continuation of the
+This is a complete rewrite and continuation of the
 [sagetv-for-plexmediacenter](http://code.google.com/p/sagetv-for-plexmediacenter/)
 project hosted on google code.
 
@@ -48,13 +48,41 @@ The `sagetv-for-plexmediacenter-v*-*.zip` file contains the following directorie
 * **`plex`** folder contains files for PLEX Media Server.
 * **`sagetv`** folder contains files for SageTV.
 
-## Install
+## Installation
 
-To install sagetv-for-plexmediacenter automatically, unzip the
-download, and follow the install.txt instruction in the install folder
-to run the appropriate installer for your platform.
+To install sagetv-for-plexmediacenter, extract the zip file and run
+the appropriate installer for your platform. The installer will ask
+some questions and guide you through the installation process.
+
+The installer can also be used to remove sagetv-for-plexmediacenter
+from your system. For more details, see install.txt.
+
+### Windows
+
+```
+install\win32\sageplex_install.exe -i
+```
+
+### MacOS
+
+```
+python install/sageplex_install.py -i
+```
+
+### Linux
+
+On Linux, the installer should be invoked as the **plex** user. This
+can be done as follow:
+
+```
+sudo -u plex python install/sageplex_install.py -i
+```
+
+### Manual Install
 
 Follow the instructions below if you wish to perform a manual install.
+For MacOS/Linux, simply substitute the appropriate destination
+location.
 
 This assumes you are somewhat familiar with this plugin, SageTV, and
 PLEX Media Server. If not, please take a look at this [Install
@@ -219,6 +247,11 @@ folder:
 You can build the zip deliverable by simply run 'make' from the
 project root folder. This will create a build directory and package a
 zip file with suitable directory structure for install on user system.
+
+To build the project you need to have the following:
+
+1. Python 2.x
+2. cxFreeze
 
 ## Notes
 
