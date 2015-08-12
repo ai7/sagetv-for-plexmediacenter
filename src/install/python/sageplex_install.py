@@ -7,7 +7,7 @@
 # uninstall: python sageplex_install.py -u
 #
 
-import os, sys, argparse, logging, shutil, json
+import os, sys, argparse, logging, shutil, subprocess, json
 
 PROG_DESC   = ('Install/Uninstall/Configure SageTV for PLEX Media Server.')
 LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
@@ -29,6 +29,7 @@ SAGE_REG_WIN = [[ r'HKEY_LOCAL_MACHINE',
                   r'LastInstallDir' ]]
 
 CFG_FILE = 'sageplex_cfg.json'
+CFG_ENV  = 'SAGEPLEX_CFG'
 
 g_root = ''  # script location
 g_step = 1   # UI step count
@@ -125,6 +126,36 @@ def deleteFile(f, isTree=False):
     except IOError as e:
         logging.error(str(e))
         return None
+
+    return True
+
+
+def runCommand(cmd, shell=False):
+    '''execute a command and return the output
+
+    @param cmd    command to execute, an array
+    @param shell  invoke via shell
+    @return       the output of the command or None
+    '''
+    try:
+        logging.info('calling %s', cmd)
+        output = subprocess.check_output(cmd, shell=shell)
+        return output.strip()
+    except (subprocess.CalledProcessError), e:
+        logging.error("call failed: %s", e)
+
+
+def setGlobalEnvWin(key, value):
+    '''Set a global environment variable on Windows'''
+    if not key:
+        return
+
+    if not value:
+        value = '' # this will clear value
+
+    s = 'setx %s "%s"' % (key, value)
+    output = runCommand(s)
+    logging.info('setx returned: %s', output)
 
     return True
 
@@ -482,17 +513,31 @@ def removePlexFiles(plexPath):
     sys.stdout.flush()
     g_step += 1
 
-    if not deleteFile(dst, isTree=True):
+    # can't nuke the whole folder as there may be other custom scanners
+    f1 = os.path.join(dst, 'sageplex')
+    f2 = os.path.join(dst, 'SageTV Movie Scanner.py')
+
+    if not deleteFile(f1, isTree=True):
+        print '[Failed]'
+        return
+    print '[OK]',
+    if not deleteFile(f2):
         print '[Failed]'
         return
     print '[OK]',
 
     dst = os.path.join(plexPath, r'Scanners/Series')
+    f1 = os.path.join(dst, 'sageplex')
+    f2 = os.path.join(dst, 'SageTV Scanner.py')
 
-    if not deleteFile(dst, isTree=True):
+    if not deleteFile(f1, isTree=True):
         print '[Failed]'
         return
-    print '[OK]'
+    print '[OK]',
+    if not deleteFile(f2):
+        print '[Failed]'
+        return
+    print '[OK]'  # no comma, newline
 
     # copy bmt agent
     print '[%d] Deleting PLEX Agent ...' % g_step,
@@ -517,6 +562,31 @@ def removePlexFiles(plexPath):
         print '[Failed]'
         return
     print '[OK]'
+
+    return True
+
+
+def setCfgEnv(plexPath, remove=False):
+    '''Set SAGEPLEX_CFG to point to sageplex_cfg.json file'''
+
+    # if on windows, set set SAGEPLEX_CFG to point to the
+    # configuration file we configured. This is necessary because we
+    # can't access the registry (_wreg module) in the restricted PMS
+    # plugin environment, so we are unable to lookup PMS data location
+    # if the user reconfigure it to somewhere else and not the
+    # default.
+    #
+    # The solution is to have the installer set the environment
+    # variable so the scanner/plugin can find it easily.
+    if isWin:
+        # path to sageplex_cfg.json file
+        dst = os.path.join(plexPath, CFG_FILE)
+        if not remove:
+            print '\nSetting environment variable:\n  %s=%s' % (CFG_ENV, dst)
+            return setGlobalEnvWin(CFG_ENV, dst)
+        else:
+            print '\nClearing environment variable:\n  %s=%s' % (CFG_ENV, None)
+            return setGlobalEnvWin(CFG_ENV, None)
 
     return True
 
@@ -554,6 +624,8 @@ def runInstall(sagePath, plexPath):
     # copy plex files
     if plexPath:
         if not copyPlexFiles(plexPath):
+            return
+        if not setCfgEnv(plexPath):
             return
 
     # done, print some help messages at the end
@@ -731,12 +803,16 @@ def runUninstall(sagePath, plexPath):
     print ''
 
     # copy sagetv files
-    if sagePath and not removeSageFiles(sagePath):
-        return
+    if sagePath:
+        if not removeSageFiles(sagePath):
+            return
 
     # copy plex files
-    if plexPath and not removePlexFiles(plexPath):
-        return
+    if plexPath:
+        if not removePlexFiles(plexPath):
+            return
+        if not setCfgEnv(plexPath, remove=True):
+            return
 
     # done, print some help messages at the end
     print '\nUninstall completed. Please restart %s.' % progs

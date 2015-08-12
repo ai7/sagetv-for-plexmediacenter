@@ -1,6 +1,11 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2015-08-11  Raymond Chi <raychi@gmail.com>
+
+  * Updated installer to set SAGEPLEX_CFG env var on Windows.
+      - handles customized PLEX data location
+
 2015-06-16  Raymond Chi <raychi@gmail.com>
 
   * Added Installer for Windows/MacOS/Linux.
