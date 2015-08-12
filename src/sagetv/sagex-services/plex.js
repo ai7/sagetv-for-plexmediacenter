@@ -38,6 +38,9 @@
  */
 function GetMediaFileForName(filename)
 {
+    // Global.DebugLog("entering GetMediaFileForName() ...");
+    // goes to sagetv_0.txt if debug logging is on
+
     var allMedia = MediaFileAPI.GetMediaFiles();
 
     // var allMedia = SageAPI.call('GetMediaFiles', null);
@@ -92,7 +95,6 @@ function GetMediaFileForName(filename)
 //   JavaScript falsy values: false/null/undefined/''/0/NaN
 //
 // Question:
-//   Q1: where to output logs?
-//   Q2: would it be faster if we simply return all of
-//       MediaFileAPI.GetMediaFiles() to python and do all the
-//       repeated searches for different files there?
+//   Q: would it be faster if we simply return all of
+//      MediaFileAPI.GetMediaFiles() to python and do all the
+//      repeated searches for different files there?
