@@ -233,8 +233,11 @@ class BMTAgent(Agent.TV_Shows):
 
                 stars = show.get('PeopleListInShow')
                 episode.guest_stars.clear()
-                for star in stars:
-                    episode.guest_stars.add(star)
+                if stars:  # See issue #13
+                    for star in stars:
+                        episode.guest_stars.add(star)
+                else:
+                    mylog.debug('no PeopleListInShow data.')
 
                 # set rating
                 rSource = airing.get('ParentalRating')

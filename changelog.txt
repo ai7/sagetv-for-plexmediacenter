@@ -1,6 +1,10 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2015-10-15  Raymond Chi <raychi@gmail.com>
+
+  * Fixed Agent issue when show/PeopleListInShow have no data.
+
 2015-08-11  Raymond Chi <raychi@gmail.com>
 
   * Updated installer to set SAGEPLEX_CFG env var on Windows.
