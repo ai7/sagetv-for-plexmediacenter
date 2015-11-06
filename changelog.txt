@@ -1,11 +1,11 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
-2015-11-05  Raymond Chi <raychi@gmail.com>
+2015-11-06  Raymond Chi <raychi@gmail.com>
 
   * Implemented two way sync in sageplex_sync tool.
       - using normalized watch status representation to simplify code
-        and handle corner cases.
+        and handle corner cases better.
 
 2015-10-15  Raymond Chi <raychi@gmail.com>
 

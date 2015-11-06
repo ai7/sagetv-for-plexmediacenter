@@ -8,7 +8,7 @@ SRC_DIR = src
 BUILD_DIR = build
 STAGE_DIR = $(BUILD_DIR)/stage
 
-REL_VERSION   = 8.2.0
+REL_VERSION   = 8.3.0
 REL_PHASE     = beta
 
 SCANNER_TV    = $(STAGE_DIR)/plex/Scanners/Series
@@ -72,6 +72,8 @@ synctool:
 	# copy library to each scanner's sub folder
 	cp -r $(SRC_DIR)/plex/common/sageplex "$(SYNCTOOL_DIR)/python"
 	cd "$(SYNCTOOL_DIR)/python" && $(CXFREEZE) sageplex_sync.py --target-dir ../win32
+	# copy documentation
+	cp "wiki/synctool.md" "$(SYNCTOOL_DIR)/readme.md"
 
 installer: pyinstall
 
