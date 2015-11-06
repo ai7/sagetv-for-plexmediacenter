@@ -218,6 +218,9 @@ def syncSections(args):
     # if all is specified, get all sections and add to work list
     if 'all' in args.id:
         sections = plexapi.listSections()
+        if not sections:
+            print 'Failed to retrieve sections!'
+            return
         slist.extend(sections.keys())
     else:
         # user entered a list of id/names
