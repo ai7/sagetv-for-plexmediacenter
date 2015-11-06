@@ -4,11 +4,28 @@
 #
 # Tool that synchronizes watched/resume status between Sage/Plex
 #
+# SageTV and PLEX handles watch status and resume position
+# differently. This adds some complication to the sync logic.
+#
+# After watching a show, PLEX will rewind the position to the
+# beginning, while SageTV's position will remain at the end. We need
+# to recognize these as the same.
+#
+# PLEX stores a watched count, and will increment it when you rewatch
+# a show. So the status remains watched in a sense, while the resume
+# position starts from the beginning and continue on.
+#
+# SageTV on the other hand will clear the watched status when you
+# rewatch a show. So in essense, it only has three states, unwatched,
+# unwatched with some resume position, and watched. Furthermore,
+# setting resume position on a watched show is apparently a no-op. So
+# need to clear watch status before we can set a resume position.
+#
 ######################################################################
 
 # PLEX reg key for non-localhost access: disableRemoteSecurity="1"
 
-import sys, logging, argparse, signal
+import os, sys, logging, argparse, signal, pprint
 
 import sageplex.plexlog  # log wrapper for scanner/agent
 import sageplex.config   # read configuration files
@@ -50,6 +67,14 @@ def signal_handler(signal, frame):
 # statistics object
 ######################################################################
 
+def watchedToStr(watched):
+    '''Return watched status as string
+
+    @param watched  boolean
+    '''
+    return 'watched' if watched else 'not watched'
+
+
 class Stat:
     '''keeps track of statistics'''
     def __init__(self):
@@ -75,39 +100,48 @@ class Stat:
             s += ', %d updated' % self.updated
         return s
 
-    def addPlex(self, id, title, p_resume, s_resume):
+    def addPlex(self, id, title, p_resume, s_resume, p_watch, s_watch):
         '''add an out of sync plex title to list
 
         @param id        plex media-id of video
         @param title     name of video
         @param p_resume  plex resume position
         @param s_resume  sage resume position
+        @param p_watch   plex watched status
+        @param s_watch   sage watched status
         '''
-        s = ('[%s] %s (%s vs %s)' %
-             (id, title, p_resume, s_resume))
+        s = ('[%s] %s (%s [%s] vs %s [%s])' %
+             (id, title,
+              p_resume, watchedToStr(p_watch),
+              s_resume, watchedToStr(s_watch)))
         self.plex.append(s)
 
-    def addSage(self, id, title, s_resume, p_resume):
+    def addSage(self, id, title, s_resume, p_resume, s_watch, p_watch):
         '''add an out of sync sage title to list
 
         @param id        plex media-id of video
         @param title     name of video
-        @param p_resume  plex resume position
         @param s_resume  sage resume position
+        @param p_resume  plex resume position
+        @param s_watch   sage watched status
+        @param p_watch   plex watched status
         '''
-        s = ('[%s] %s (%s vs %s)' %
-             (id, title, s_resume, p_resume))
+        s = ('[%s] %s (%s [%s] vs %s [%s])' %
+             (id, title,
+              s_resume, watchedToStr(s_watch),
+              p_resume, watchedToStr(p_watch)))
         self.sage.append(s)
 
-    def addNoSage(self, id, title, p_resume):
+    def addNoSage(self, id, title, p_resume, p_watch):
         '''add an not in sage title to list
 
         @param id        plex media-id of video
         @param title     name of video
         @param p_resume  plex resume position
+        @param p_watch   plex watched status
         '''
-        s = ('[%s] %s (%s)' %
-             (id, title, p_resume))
+        s = ('[%s] %s (%s [%s])' %
+             (id, title, p_resume, watchedToStr(p_watch)))
         self.nosage.append(s)
 
     def printSummary(self):
@@ -154,7 +188,6 @@ def mainList(args):
 ######################################################################
 # run info/sync
 ######################################################################
-
 
 def syncMediaId(args):
     '''Sync/info particular media-id
@@ -220,9 +253,8 @@ def syncSections(args):
 
 
 def processVideo(node, log):
-    '''Process the video node and synchronize the resume position
-
-    For now this is one way, from Sage -> Plex
+    '''Process the video node and synchronize the resume position and
+    watched status.
 
     @param node   xml <Video> node
     @param log    the log object
@@ -237,13 +269,14 @@ def processVideo(node, log):
     pv = sageplex.spvideo.PlexVideo(node, log)
     print '  %s' % str(pv).encode('ascii', 'ignore'),
     sys.stdout.flush()
-    p_resume = pv.getResume()
+    pn_resume = pv.getResumeNorm()
 
     # if set explicit position, do it here before query sage
+    # XXX: clean up this block
     if g_args.position:
         print '[set to %s]' % g_args.position
         print '\t  PLEX: %s' % pv.getInfo()
-        if g_args.positionSec == p_resume:
+        if g_args.positionSec == pv.getResume():
             print '\t  No change needed, skipping.',
             return
         # now update PLEX media
@@ -267,72 +300,192 @@ def processVideo(node, log):
     if not mf:
         print '[not in Sage]'
         log.info('file not in SageTV: %s', pv.file)
-        g_stat.addNoSage(pv.id, pv.getTitle(), pv.getResumeStr())
+        g_stat.addNoSage(pv.id, pv.getTitle(), pv.getResumeStr(), pv.getWatched())
         return
     sv = sageplex.spvideo.SageVideo(mf, log)
-    s_resume = sv.getResume()
+    sn_resume = sv.getResumeNorm()
     airing = mf.get('Airing')
 
-    # if in sync (or both 0), no changes needed
-    if p_resume == s_resume:
+    # if asking to dump sage data, dump and exit
+    if g_args.sagedata:
+        print '\n'
+        pprint.pprint(mf)
+        return
+
+    # ***** now perform the sync *****
+
+    watched_sync = False  # are watch status in sync
+    pos_sync = False      # are resume position in sync
+    reason = ''           # extra text for console output
+    ignore = int(g_args.ignore) * 1000
+
+    # 1. check whether the watched status is in sync or not
+    watched_sync = sv.getWatched() == pv.getWatched()
+
+    # 2. check whether resume position is in sync or not.
+    if (pn_resume == sn_resume or abs(pn_resume - sn_resume) < 2000):
+        # The 2 second difference is needed because setting the resume
+        # position in Sage does not yield exact ms result as PLEX pos.
+        reason = '[OK]'
+        pos_sync = True
+
+    # plex: watched, pos at 20m
+    # sage: not watched, pos at 20m
+    # need to consider this as watch status in sync
+    # if sage is not watched, pos is in sync and > 0
+    if pos_sync and sn_resume > 0:
+        if not sv.getWatched() and pv.getWatched():
+            watched_sync = True
+            reason = '[Ok]'
+
+    # 3. if both watched/position are in sync, we are done
+    if watched_sync and pos_sync:
         g_stat.insync += 1
-        print '[OK]'
+        print reason
+        if g_args.media:
+            # print detailed timing info
+            print '\t  Sage: %s' % sv.getInfo(g_args.media) # detail if individual media
+            print '\t  PLEX: %s' % pv.getInfo()
         return
 
-    # if only one is zero, and other is within 1 min of start
-    if (not p_resume) or (not s_resume):
-        ignore = int(g_args.ignore) * 1000
-        if ((p_resume and p_resume < ignore) or
-            (s_resume and s_resume < ignore)):
-            # in sync, no changes needed
-            g_stat.insync += 1
-            print '[OK < %ss]' % g_args.ignore
-            return
+    # 4. watched/pos are not in sync, now do the syncing
 
-    # sage is out of sync
-    if s_resume < p_resume:
-        g_stat.addSage(pv.id, pv.title, sv.getResumeStr(None),
-                       pv.getResumeStr(None))
-        print '[Sage out of sync]'
-        print '\t  Sage: %s' % sv
-        print '\t  PLEX: %s' % pv.getInfo()
-        # do nothing for now
-        return
-
-    # plex is out of sync
-    if p_resume < s_resume:
-        # first check if ending is within 5% of length, if so, ignore
-        airingDuration = airing.get('AiringDuration')
-        if airingDuration:
-            # ignore ending resume position depending on show length
-            airingDuration = int(airingDuration)
-            diff = airingDuration - s_resume
-            if diff <= (airingDuration*.05):
-                # in sync if within 5% of ending
-                g_stat.insync += 1
-                print '[OK < 5%/ENDING]'
-                return
-        g_stat.addPlex(pv.id, pv.title, pv.getResumeStr(None),
-                       sv.getResumeStr(None))
-        print '[PLEX out of sync]'
-        print '\t  PLEX: %s' % pv.getInfo()
-        print '\t  Sage: %s' % sv
-        # if info mode, done
-        if not g_args.sync:
-            return
-        # now update PLEX media
-        if not askUser(None, '\tUpdate media [%s]: %s?' %
-                       (pv.id, pv.title), silent=(not g_args.prompt)):
-            return
-        print '\t  Updating PLEX ... ',
-        sys.stdout.flush()
-        if not g_args.simulate:
-            # Plex seems to ignore starting pos under a minute
-            plexapi.setProgress(pv.id, s_resume)
-            g_stat.updated += 1
-            print '[done]'
+    # - if resume position needs sync, more recent one takes effect
+    #     sage: clear watch status if watched, then set pos
+    #     plex: set pos
+    #     done, do not sync watch status (as doing so clears pos)
+    # - if watch status needs sync
+    #     sync only one way, from unwatched -> watched
+    if not pos_sync:
+        if sv.lastWatched < pv.lastWatched:
+            # sync sage pos with PLEX data
+            updateSage(sv, pv, airing, syncPos=True)
         else:
-            print '[simulate]'
+            # sync plex pos with Sage data
+            updatePlex(pv, sv, syncPos=True)
+    elif not watched_sync:
+        if sv.getWatched():  # Sage true PLEX must be false
+            assert(not pv.getWatched())
+            updatePlex(pv, sv, syncStatus=True)
+        elif pv.getWatched():  # PLEX true sage must be false
+            assert(not sv.getWatched())
+            updateSage(sv, pv, airing, syncStatus=True)
+        else:
+            assert(False)
+    else:
+        assert(False)
+
+
+def updatePlex(pv, sv, syncStatus=False, syncPos=False):
+    '''Update PLEX metadata from Sage
+
+    @param pv          PlexVideo object
+    @param sv          SageVideo object
+    @param syncStatus  are we updating watch status?
+    @param syncPos     are we updating pos?
+    '''
+    if not syncStatus and not syncPos:
+        return
+
+    g_stat.addPlex(pv.id, pv.title,
+                   pv.getResumeStr(None), sv.getResumeStr(None),
+                   pv.getWatched(), sv.getWatched())
+    print '[PLEX out of sync]'
+    print '\t  PLEX: %s' % pv.getInfo()
+    print '\t  Sage: %s' % sv.getInfo(g_args.media) # detail if individual media
+    # if info mode, done
+    if not g_args.sync:
+        return
+    # now update PLEX media
+    if not askUser(None, '\tUpdate PLEX media [%s]: %s?' %
+                   (pv.id, pv.title), silent=(not g_args.prompt)):
+        return
+    print '\t  Updating PLEX ...',
+    sys.stdout.flush()
+    # now set watched status on PLEX
+    if syncStatus:
+        print '[watched]',
+        if not g_args.simulate:
+            plexapi.setWatched(pv.id, True)
+    elif syncPos:
+        # Plex seems to ignore starting pos under a minute
+        print '[pos]',
+        if not g_args.simulate:
+            plexapi.setProgress(pv.id, sv.resume)
+    else:
+        assert(False)
+
+    # output done message
+    if not g_args.simulate:
+        g_stat.updated += 1
+        print '[done]'
+    else:
+        print '[simulate]'
+
+
+def updateSage(sv, pv, airing, syncStatus=False, syncPos=False):
+    '''Update Sage metadata from PLEX
+
+    @param sv          SageVideo object
+    @param pv          PlexVideo object
+    @param airing      mf airing object
+    @param syncStatus  are we updating watch status?
+    @param syncPos     are we updating pos?
+    '''
+    if not syncStatus and not syncPos:
+        return
+
+    g_stat.addSage(pv.id, pv.title,
+                   sv.getResumeStr(None), pv.getResumeStr(None),
+                   sv.getWatched(), pv.getWatched())
+    print '[Sage out of sync]'
+    print '\t  Sage: %s' % sv.getInfo(g_args.media) # detail if individual media
+    print '\t  PLEX: %s' % pv.getInfo()
+    # if info mode, done
+    if not g_args.sync:
+        return
+    # now update Sage media
+    if not askUser(None, '\tUpdate Sage media [%s]: %s?' %
+                   (pv.id, pv.title), silent=(not g_args.prompt)):
+        return
+    print '\t  Updating Sage ...',
+    sys.stdout.flush()
+    # now set watched status on Sage
+    if syncStatus:
+        print '[watched]',
+        if not g_args.simulate:
+            sageapi.setWatched(airing.get('AiringID'))
+    elif syncPos:
+        # sage don't take a duration?
+        print '[pos]',
+        if not g_args.simulate:
+            if sv.getWatched():
+                # if sage is watched, clear it, as we can't set pos if
+                # it's in watched state.
+                print '[- watched]',
+                sageapi.clearWatched(airing.get('AiringID'))
+            if pv.resume:
+                # if have plex resume pos, set it
+                sageapi.setWatchedTimes(airing.get('AiringID'),
+                                        airing.get('AiringStartTime') + pv.resume,
+                                        pv.lastWatched * 1000 - pv.resume)
+            else:
+                # no plex resume pos, plex must be watched, set sage
+                # watched flag. this is because we are copying a plex
+                # pos 0 to sage, which must mean this is a plex
+                # watched show. damn this is complicated! :)
+                assert(pv.getWatched())
+                print '[watched]',
+                sageapi.setWatched(airing.get('AiringID'))
+    else:
+        assert(False)
+
+    # output done message
+    if not g_args.simulate:
+        g_stat.updated += 1
+        print '[done]'
+    else:
+        print '[simulate]'
 
 
 def askUser(msg, prompt, default='n', silentDefault='y', silent=False):
@@ -489,6 +642,9 @@ def parseArgs():
     parser.add_argument('-m', '--media',
                         help='ID is media-id, not section-id',
                         action='store_true')
+    parser.add_argument('--sagedata',
+                        help='dump SageTV data for media-id',
+                        action='store_true')
     parser.add_argument('--position',
                         help='Set explicit resume position (h:m:s)',
                         default=None)
@@ -561,6 +717,12 @@ def parseArgs():
         print 'Error: must specify at least one path with --addmovie option!'
         return
 
+    if args.sagedata:
+        # must be in media-id mode, not section mode
+        if not args.media:
+            print 'Error: must use individual Media-ID (-m) for Sage data dump!'
+            return
+
     # any work to do?
     if (args.list or args.id or
         args.addtv or args.addmovie or
@@ -570,9 +732,29 @@ def parseArgs():
         parser.print_help()
 
 
+def setupLogging():
+    '''Setup logging for sageplex_sync
+
+    log files are put in %temp%, and will rotate once reaching 5MB
+    with up to 5 backup files.
+    '''
+    global mylog
+
+    # put logs in temp
+    tmploc = os.path.expandvars('$TEMP')
+    if tmploc == '$TEMP':
+        tmploc = ''
+    logloc = os.path.join(tmploc, 'sageplex_sync.log')
+
+    # log wrapper
+    mylog = sageplex.plexlog.PlexLog()
+    mylog.updateLoggingConfig(logloc, LOG_FORMAT, True) # rotate handler
+    mylog.info('***** Entering SagePlex Sync %s *****', sys.argv[1:])
+
+
 def main():
     '''Main entrypoint'''
-    global mycfg, mylog, sageapi, plexapi
+    global mycfg, sageapi, plexapi
     global g_args, g_stat
 
     # parse arguments
@@ -582,10 +764,7 @@ def main():
     g_args = args
 
     # parameter is OK, initialize logs/config object
-    logging.basicConfig(format=LOG_FORMAT, level=logging.DEBUG,
-                        filename='sageplex_sync.log')
-    mylog = sageplex.plexlog.PlexLog()  # log wrapper
-    mylog.info('***** Entering SagePlex Sync *****')
+    setupLogging()
 
     # create cfg/sage/plex global objects
     mycfg = sageplex.config.Config(sys.platform)

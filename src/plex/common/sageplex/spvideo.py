@@ -13,12 +13,18 @@ import datetime, os
 # base Video class
 ######################################################################
 
+START_IGNORE = 60*1000  # ignore starting position under a minute
+END_IGNORE   = 20       # ignore ending position within 1/this of ending
+
+
 class BaseVideo(object):
     '''Base video class with some useful stuff'''
 
     def __init__(self):
         self.watched = False  # has the show been watched
         self.resume = 0       # resume pos in milliseconds
+        self.resumeNorm = 0   # normalized resume pos in ms
+        self.duration = 0     # show length in ms
         self.lastWatched = 0  # last watched in seconds
 
     def timeToStr(self, time):
@@ -44,6 +50,17 @@ class BaseVideo(object):
     def getResume(self):
         '''Return resume position in ms'''
         return self.resume
+
+    def getResumeNorm(self):
+        '''Return normalized resume position in ms
+
+        A normalized resume position have value 0 if the show has been
+        watched, or within 1 min of start or 5% of ending. This makes
+        it easy for us to compare resume position without requiring
+        complicated logic to handle differences between how Sage and
+        PLEX handles watched shows, and corner cases.
+        '''
+        return self.resumeNorm
 
     def getResumeStr(self, default=''):
         '''Return the resume position as a string'''
@@ -80,6 +97,8 @@ class SageVideo(BaseVideo):
         # super(SageVideo, self).__init__()
 
         # initialize additional defaults
+        self.watchedStartTime = 0  # in ms
+        self.watchedEndTime = 0    # in ms
         self.realWatchedStartTime = 0  # in ms
         self.realWatchedEndTime = 0    # in ms
 
@@ -99,12 +118,19 @@ class SageVideo(BaseVideo):
         # get the last watched time
         data = airing.get('LatestWatchedTime')  # in ms
         if data:
-            self.lastWatched = int(data // 1000)
+            self.lastWatched = int(data // 1000)  # store in SECOND
+
+        # get show duration
+        data = airing.get('AiringDuration')  # in ms
+        if data:
+            self.duration = int(data)
 
         # get resume position
         data = airing.get('WatchedDuration')  # in ms
         if data:
             self.resume = int(data)
+            # set normalized resume position
+            self.setResumeNorm()
 
         # get the watched start and end time, this should corresponds
         # to the latest watched time and the watched duration above
@@ -123,17 +149,70 @@ class SageVideo(BaseVideo):
             self.realWatchedStartTime = int(start)
             self.realWatchedEndTime = int(end)
 
+        # Sage's LatestWatchedTime seems to track WatchedEndTime,
+        # which is not the real timestamp the user has last watched
+        # the show. So we override it with realEndTime here
+        if self.realWatchedEndTime > self.lastWatched * 1000:
+            self.lastWatched = self.realWatchedEndTime // 1000
+
     def __str__(self):
         '''Return string representation if implicitly requested'''
         # lastwatched / resume
         s = self.getLastWatchedStr() + ' / ' + self.getResumeStr()
+        if self.watched:
+            s += ' [watched]'
+        else:
+            s += ' [not watched]'
+        return s
+
+    def setResumeNorm(self):
+        '''Compute the normalized resume position for Sage
+
+        For Sage, if a show is watched, then the resume position is
+        left as is, either at the very end, or very close to the end.
+        We simply normalize it back to 0.
+
+        If a position is less than 1m from start, set it back to 0.
+
+        We don't need to handle the 5% from ending case for Sage
+        because Sage will leave the pos at the end when we finish
+        watching, and clear watched status when you rewatch, so
+        there's no ambuigity on when Sage considers a show watched.
+        '''
+        val = self.resume
+        if self.watched:
+            # if status is watched, set pos back to 0
+            if val > 0:
+                val = 0
+        elif val > 0 and val < START_IGNORE:
+            # if pos is within 1 min, set back to 0
+            val = 0
+        self.resumeNorm = val
+
+    def getInfo(self, detail=False):
+        '''Return detailed timing info if requested
+
+        @param detail  whether detailed info is wanted or not
+        @return        string
+        '''
+        s = str(self)
+        if not detail:
+            return s
+
+        # return detailed timing info formatted for screen
+        if self.watchedStartTime and self.watchedEndTime:
+            s += ('\n\t\t%s to %s [%s] (Watched Time)' %
+                  (self.timeToStr(self.watchedStartTime // 1000),
+                   self.timeToStr(self.watchedEndTime // 1000),
+                   self.durationToStr((self.watchedEndTime -
+                                       self.watchedStartTime) // 1000)))
         # real start/end if exist
-        #if self.realWatchedStartTime and self.realWatchedEndTime:
-        #    s += (' (%s to %s [%s])' %
-        #          (self.timeToStr(self.realWatchedStartTime // 1000),
-        #           self.timeToStr(self.realWatchedEndTime // 1000),
-        #           self.durationToStr((self.realWatchedEndTime -
-        #                               self.realWatchedStartTime) // 1000)))
+        if self.realWatchedStartTime and self.realWatchedEndTime:
+            s += ('\n\t\t%s to %s [%s] (Real Watched Time)' %
+                  (self.timeToStr(self.realWatchedStartTime // 1000),
+                   self.timeToStr(self.realWatchedEndTime // 1000),
+                   self.durationToStr((self.realWatchedEndTime -
+                                       self.realWatchedStartTime) // 1000)))
         return s
 
 
@@ -179,8 +258,20 @@ class PlexVideo(BaseVideo):
         # get the lastViewedAt, in seconds
         self.lastWatched = int(node.get('lastViewedAt', 0))
 
+        # XXX: get show duration
+        self.duration = int(node.get('duration', 0))
+
         # get the viewOffset, ie, resume position, this is in ms
         self.resume = int(node.get('viewOffset', 0))
+        # set normalized resume position
+        self.setResumeNorm()
+
+        # the view count can be quite big on PLEX for some reason
+        self.viewCount = int(node.get('viewCount', 0))
+        if self.viewCount:
+            self.watched = True
+        else:
+            self.watched = False
 
         # get the filename
         p = node[0][0]  # Media/Part, this seems more reliable than .find()
@@ -194,13 +285,33 @@ class PlexVideo(BaseVideo):
         s= ('%s: %s' % (self.id, self.getTitle()))
         return s
 
+    def setResumeNorm(self):
+        '''Compute the normalized resume position for PLEX'''
+        val = self.resume
+        if val > 0 and val < START_IGNORE:
+            # if pos is within 1 min, set back to 0. PLEX does not
+            # allow setting of resume pos within 1 min anyway.
+            val = 0
+        if val:
+            # if pos is within 5% of ending, set back to 0. we do this
+            # because we don't know when exactly PLEX considers a show
+            # watched, so this is an approximation.
+            diff = abs(self.duration - val)
+            if diff <= (self.duration / END_IGNORE):
+                val = 0
+        self.resumeNorm = val
+
     def getInfo(self):
         '''Get resume timing information'''
+        s = ''
         if self.lastWatched or self.resume:
-            return ('%s / %s' % (self.getLastWatchedStr(),
-                                 self.getResumeStr()))
+            s += ('%s / %s' % (self.getLastWatchedStr(),
+                               self.getResumeStr()))
+        if self.watched:
+            s += ' [watched %s]' % str(self.viewCount)
         else:
-            return ''
+            s += ' [not watched]'
+        return s
 
     def getTitle(self):
         '''Return the title, ASCII safe'''

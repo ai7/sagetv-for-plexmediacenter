@@ -20,8 +20,10 @@
  * SageTV API:
  *   http://download.sage.tv/api/
  * sagex-services:
+ *   http://user:pwd@host:8080/sagex/api
+ *   http://github.com/stuckless/sagetv-sagex-api/wiki/REST-APIs-using-sagex-api
+ * Older Doc:
  *   http://code.google.com/p/customsagetv/wiki/SageTVapi
- * RemoteHttpApiForSageTV
  *   http://code.google.com/p/customsagetv/wiki/RemoteHttpApiForSageTV
  */
 

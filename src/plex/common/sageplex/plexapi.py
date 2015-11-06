@@ -94,7 +94,7 @@ class PlexApi(object):
         # /:/scrobble?key=12&identifier=com.plexapp.plugins.library
         url = (self.PLEX_HOST +
                ('/:/%s?%s' % (action, pstr)))
-        return url;
+        return url
 
     # :/scrobble?key=12&identifier=com.plexapp.plugins.library
     def setWatched(self, id, isWatched):

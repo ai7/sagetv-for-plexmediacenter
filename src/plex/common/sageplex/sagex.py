@@ -5,6 +5,8 @@
 # Module that handles communication with sageTV server. Work under
 # both scanner (standalone python) and agent (PMS framework)
 #
+# SageTV API: http://sagetv.com/api/
+#
 ######################################################################
 
 import urllib, json, threading
@@ -112,7 +114,7 @@ class SageX(object):
         '''
         # first construct the function parameters
         # &1=params[0]&2=params[1]...
-        pStr = '';
+        pStr = ''
         i = 1
         for p in params:
             # escape any space in filenames
@@ -122,13 +124,15 @@ class SageX(object):
         # append : to custom service if specified
         if service:
             service += ':'
+        else:
+            service = ''
 
         # now construct the URL such as
         # /sagex/api?c=plex:GetMediaFileForName&1=%s&encoder=json
         url = (self.SAGEX_HOST +
                ('sagex/api?c=%s%s%s&encoder=%s' %
                 (service, func, pStr, encoder)))
-        return url;
+        return url
 
     def call(self, func, params=[], service='', encoder='json'):
         '''Make a generic sagex API call
@@ -142,7 +146,7 @@ class SageX(object):
         if not func:
             self.log.error("SageX.call: func is NULL")
             return
-        url = self.getApiUrl(func, params, service, encoder);
+        url = self.getApiUrl(func, params, service, encoder)
 
         # now open the url
         data = self.openUrl(url)
@@ -174,7 +178,7 @@ class SageX(object):
         @param filename  filename to lookup media info
         @return          json[MediaFile] or None
         '''
-        s1 = self.call('GetMediaFileForName', [filename], 'plex');
+        s1 = self.call('GetMediaFileForName', [filename], 'plex')
         if s1:
             val = s1.get('MediaFile') # None if key not found
             self.log.debug('getMediaFileForName(%s): %s', filename,
@@ -281,6 +285,43 @@ class SageX(object):
 
         return response
 
+    # /sagex/api?c=ClearWatched&1=airing:3951965&encoder=json
+    def clearWatched(self, airing):
+        '''Clears the watched information for this Airing completely
+
+        @param airing  SageTV airing ID
+        @return        JSON response
+        '''
+        return self.call('ClearWatched', ['airing:%s' % airing])
+
+    # /sagex/api?c=SetWatched&1=airing:3951965&encoder=json
+    def setWatched(self, airing):
+        '''Set the watched flag on an Airing
+
+        Sets the watched flag for this Airing to true as if the user
+        watched the show from start to finish
+
+        @param airing  SageTV airing ID
+        @return        JSON response
+        '''
+        return self.call('SetWatched', ['airing:%s' % airing])
+
+    # /sagex/api?c=SetWatchedTimes&1=airing:3951965&2=xxxx&3=yyyy&encoder=json
+    def setWatchedTimes(self, airing, watchedEndTime, realStartTime):
+        '''Updates the Watched information for this airing
+
+        @param airing          SageTV airing ID
+        @param watchedEndTime  [ms] an airing-relative time which indicates
+                               the time the user has watched the show up until.
+        @param realStartTime   [ms] the time (in real time) the user started
+                               watching this program at.
+        @return                JSON response
+        '''
+        return self.call('SetWatchedTimes',
+                         ['airing:%s' % airing,
+                          str(watchedEndTime),
+                          str(realStartTime)])
+
 
 ######################################################################
 
@@ -293,27 +334,12 @@ def main():
         return
     sagex = SageX(c.getSagexHost())
 
-    # test various APIs
+    # get Mediafile info
     a = sys.argv[1]
     sagex.log.info('********** getMediaFileForName(%s) **********', a)
     mf = sagex.getMediaFileForName(a)
     pprint.pprint(mf)
 
-    a = mf['Airing']['Show']['ShowExternalID']
-    sagex.log.info('********** getShowSeriesInfo(%s) **********', a)
-    r = sagex.getShowSeriesInfo(a)
-    pprint.pprint(r)
-
-    a = mf['MediaTitle']
-    sagex.log.info('********** getMediaFilesForShow(%s) **********', a)
-    r = sagex.getMediaFilesForShow(a)
-    for f in r:
-        sagex.log.info(f['SegmentFiles'])
-
-    a = mf['MediaFileID']
-    sagex.log.info('********** getMediaFileForID(%s) **********', a)
-    r = sagex.getMediaFileForID(a)
-    sagex.log.info(r['SegmentFiles'])
 
 #if __name__ == '__main__':
 #    import sys, logging, pprint
