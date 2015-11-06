@@ -36,7 +36,8 @@ optional arguments:
 
 Compare or synchronize watch status and resume position of the
 specified PLEX library sections with SageTV. Individual PLEX Media
-files can be specified when the -m option is used. ```
+files can be specified when the -m option is used.
+```
 
 ## Download
 
