@@ -60,7 +60,7 @@ from your system. For more details, see install.txt.
 ### Windows
 
 ```
-install\win32\sageplex_install.exe -i
+install\win32\run_install.bat
 ```
 
 ### MacOS

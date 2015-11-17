@@ -84,6 +84,9 @@ pyinstall:
 	cp "$(SRC_DIR)/install/install.txt" "$(STAGE_DIR)"
 	cp "$(SRC_DIR)/install/python/sageplex_install.py" "$(INSTALL_DIR)"
 	cd "$(INSTALL_DIR)" && $(CXFREEZE) sageplex_install.py --target-dir win32
+	# copy over bat files
+	cp "$(SRC_DIR)/install/python/run_install.bat" "$(STAGE_DIR)/install/win32"
+	cp "$(SRC_DIR)/install/python/run_uninstall.bat" "$(STAGE_DIR)/install/win32"
 
 zip:
 	@echo "*** producing zipfile ***"
