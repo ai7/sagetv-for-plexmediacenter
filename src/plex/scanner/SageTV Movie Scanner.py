@@ -192,6 +192,23 @@ def isRecordedMovie(mf, airing, show):
         mylog.warning("File is NOT TV recording! skipping")
         return False
 
+
+    #  Check if MediaFileMetadataProperties/MediaType is Movie
+    mediaFileMetadataProperties = mf.get("MediaFileMetadataProperties")
+    if mediaFileMetadataProperties:
+	mylog.debug("found a MediaFileMetadataProperties.  Looking for MediaType")
+        mediaType = mediaFileMetadataProperties.get("MediaType")
+        if mediaType:
+	    if 'Movie' in mediaType:
+		mylog.debug("MediaType says Movie, processing")
+		return True
+	    else:
+		mylog.debug("MediaType is %s, continuing checks...", mediaType)
+	else:
+	    mylog.debug("MediaType not Found....")
+    else:
+	mylog.debug("MediaFileMetadataProperties not Found....")
+
     # now check category
     category = show.get('ShowCategoriesList')
     if not category:

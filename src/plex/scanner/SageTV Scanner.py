@@ -184,6 +184,7 @@ def Scan(path, files, mediaList, subdirs):
             mylog.warning('No episode number, trying to set a suitable one ...')
             programId = showMF.get('ShowExternalID')
             if programId:
+		mylog.debug('programId: %s', programId)
                 # http://forums.schedulesdirect.org/viewtopic.php?f=8&t=41
                 # MV+10-12 digits for movies
                 # SP+10-12 digits for sports
@@ -191,7 +192,13 @@ def Scan(path, files, mediaList, subdirs):
                 # SH+SERIESID+0000 for a series where episode info is *not* known.
                 #    SERIESID could be 6 or 8 chars
                 ep_num = programId[-4:] # last 4 chars
-                ep_num = str(int(ep_num))
+
+		#  Handle this little aberration: EPtvdbs00e00
+		if ep_num.isdigit():
+                    ep_num = str(int(ep_num))
+	        else:
+                    ep_num = 0
+
                 if ep_num == '0':  # all 0, can't use
                     mylog.warning('ShowExternalID[-4:] is all zero: %s', programId)
                     ep_num = None
@@ -275,6 +282,22 @@ def isRecordedTv(mf, airing, show):
     if not mf.get('IsTVFile'):
         mylog.warning("File is NOT TV recording! skipping")
         return False
+    
+    #  Check MediaType
+    mediaFileMetadataProperties = mf.get("MediaFileMetadataProperties")
+    if mediaFileMetadataProperties:
+	mylog.debug("Found a MediaFileMetadataProperties.  Getting MediaType")
+        mediaType = mediaFileMetadataProperties.get("MediaType")
+	if mediaType:
+	    if 'Movie' in mediaType:
+		mylog.debug("MediaType says Movie, skipping")
+		return False
+	    else:
+		mylog.debug("MediaType is %s, continuing checks...", mediaType)
+	else:
+	    mylog.debug("MediaType not Found....")
+    else:
+	mylog.debug("MediaFileMetadataProperties not Found....")
 
     # now check category
     category = show.get('ShowCategoriesList')
