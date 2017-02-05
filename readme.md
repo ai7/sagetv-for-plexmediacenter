@@ -57,6 +57,12 @@ some questions and guide you through the installation process.
 The installer can also be used to remove sagetv-for-plexmediacenter
 from your system. For more details, see install.txt.
 
+### Prerequisite ###
+
+SageTV Plugins:
+* sagex-services - SageTV Remote API Services
+* Batch Metadata Tools - Web Interface
+
 ### Windows
 
 ```
@@ -136,7 +142,8 @@ set SAGEPLEX_CFG=%LOCALAPPDATA%\Plex Media Server
     },
     "plex": {
         "host"     : "localhost",
-        "port"     : 32400
+        "port"     : 32400,
+        "token"    : ""
     },
     "scanner": {
         "ext"      : [".mpg", ".avi", ".mkv", ".mp4", ".ts", ".m4v"],
