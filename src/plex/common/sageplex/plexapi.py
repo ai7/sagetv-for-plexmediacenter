@@ -25,7 +25,7 @@ import pdb
 class PlexApi(object):
     '''Class that implements some PLEX APIs via HTTP interface'''
 
-    def __init__(self, plexHost, log=None):
+    def __init__(self, plexHost, log=None, token=None):
         '''Creates a PlexApi object
 
         @param plexHost  url such as http://host:port/
@@ -47,6 +47,20 @@ class PlexApi(object):
         else:
             self.PLEX_HOST = ''
             self.log.error('PlexApi: plexHost not specified!!')
+        # store token value
+        self.PLEX_TOKEN = token
+
+    def addToken(self, url):
+        '''Add the PLEX token to the URL'''
+        if self.PLEX_TOKEN:
+            if '?' in url:
+                # if url already contains ?, that means we already have some
+                # params, so we just use & to add the params
+                url = '{}&{}={}'.format(url, 'X-Plex-Token', self.PLEX_TOKEN)
+            else:
+                # otherwise url have no param, so we use ? to add it
+                url = '{}?{}={}'.format(url, 'X-Plex-Token', self.PLEX_TOKEN)
+        return url
 
     def openUrl(self, url, xml=False, log=True):
         '''Open the url and get the data returned
@@ -59,6 +73,8 @@ class PlexApi(object):
         @return     data from server or None
         '''
         result = None
+        # append access token if exist
+        url = self.addToken(url)
         try:
             if log:
                 self.log.debug('openUrl: %s', url)
@@ -229,6 +245,8 @@ class PlexApi(object):
         #   k1=v1&k2=v2&...
         # individual value can be a list, ie, k1 = [v1, v2] becomes
         #   k1=v1&k1=v2..
+        if self.PLEX_TOKEN:
+            values['X-Plex-Token'] = self.PLEX_TOKEN
         data = urllib.urlencode(values, True)
         if data:
             url += '?' + data

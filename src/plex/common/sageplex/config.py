@@ -208,6 +208,12 @@ class Config(object):
         if agent:
             return agent.get('locking')
 
+    def getPlexToken(self):
+        '''Returns the PLEX access token, if any'''
+        plex = self.data.get('plex')
+        if plex:
+            return plex.get('token')
+
 
 ######################################################################
 
@@ -219,6 +225,7 @@ def main():
     cfg.log.info('scanner ext: %s', cfg.getScannerExt())
     cfg.log.info('scanner log: %s', cfg.getScannerLog())
     cfg.log.info('agent locking: %s', cfg.getAgentLocking())
+    cfg.log.info('plex token: %s', cfg.getPlexToken())
 
 #if __name__ == '__main__':
 #    import sys, logging

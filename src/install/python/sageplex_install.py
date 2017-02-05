@@ -726,6 +726,12 @@ def configCfgFile(cfg, plexPath):
         plex['port'] = ans
         changed = True
 
+    ans = askSettings('  token', plex['token'])
+    if ans:
+        logging.info('plex[token]: %s', ans)
+        plex['token'] = ans
+        changed = True
+
     # finally update the scanner log location based on platform
     old_log = data['scanner']['log']
     logPath = os.path.join(plexPath, 'Logs')

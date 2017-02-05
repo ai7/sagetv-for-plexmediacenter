@@ -781,7 +781,7 @@ def main():
         return
 
     sageapi = sageplex.sagex.SageX(mycfg.getSagexHost())
-    plexapi = sageplex.plexapi.PlexApi(mycfg.getPlexHost())
+    plexapi = sageplex.plexapi.PlexApi(mycfg.getPlexHost(), token=mycfg.getPlexToken())
 
     # register our ctrol-c handler to gracefully exit.
     mylog.info('registering SIGINT handler ...')

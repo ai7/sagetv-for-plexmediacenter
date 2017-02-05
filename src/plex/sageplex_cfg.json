@@ -7,7 +7,8 @@
     },
     "plex": {
         "host"     : "localhost",
-        "port"     : 32400
+        "port"     : 32400,
+        "token"    : ""
     },
     "scanner": {
         "ext"      : [".mpg", ".avi", ".mkv", ".mp4", ".ts", ".m4v"],

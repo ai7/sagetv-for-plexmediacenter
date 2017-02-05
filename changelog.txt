@@ -1,6 +1,17 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2017-02-05  Raymond Chi <raychi@gmail.com>
+
+  * Updated to use X-Plex-Token
+      - updated config.py/plexapi.py to read token from json file
+      - updated agent/synctool to make use of the token
+      - updated installer to ask for token during install
+
+2016-07-14  mgpaulus
+
+  * Adding a check for funky EP id causing exception.
+
 2015-11-06  Raymond Chi <raychi@gmail.com>
 
   * Implemented two way sync in sageplex_sync tool.

@@ -58,10 +58,11 @@ def Start():
 
     # create the SageX object from sagex module
     mysagex = sagex.SageX(sagexHost,
-                          useLock=myconfig.getAgentLocking,
+                          useLock=myconfig.getAgentLocking(),
                           log=mylog)
     # create plex api object
-    myplex = plexapi.PlexApi(plexHost, log=mylog)
+    myplex = plexapi.PlexApi(plexHost, log=mylog,
+                             token=myconfig.getPlexToken())
 
 
 class BMTAgent(Agent.TV_Shows):
