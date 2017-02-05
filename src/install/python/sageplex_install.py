@@ -16,7 +16,8 @@ LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
 PLEX_LOC_WIN = [ r'%LOCALAPPDATA%\Plex Media Server',
                  r'%USERPROFILE%\Local Settings\Application Data\Plex Media Server' ]
 PLEX_LOC_MAC = [ '~/Library/Application Support/Plex Media Server' ]
-PLEX_LOC_LIN = [ '~plex/Library/Application Support/Plex Media Server' ]
+PLEX_LOC_LIN = [ '~plex/Library/Application Support/Plex Media Server',
+                 '/config/Library/Application Support/Plex Media Server' ]
 
 # PLEX registry setting for data location
 PLEX_REG_WIN = [[ r'HKEY_CURRENT_USER',

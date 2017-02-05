@@ -35,7 +35,8 @@ LOC_WIN = [ '%LOCALAPPDATA%\\Plex Media Server',
 
 LOC_MAC = [ '$HOME/Library/Application Support/Plex Media Server' ]
 
-LOC_LIN = [ '$HOME/Library/Application Support/Plex Media Server' ]
+LOC_LIN = [ '$HOME/Library/Application Support/Plex Media Server',
+            '/config/Library/Application Support/Plex Media Server' ]
 
 #####
 

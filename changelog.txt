@@ -7,6 +7,8 @@
       - updated config.py/plexapi.py to read token from json file
       - updated agent/synctool to make use of the token
       - updated installer to ask for token during install
+  * updated PLEX search path to include unRAId location
+      - updated for both installer/config.py
 
 2016-07-14  mgpaulus
 
