@@ -178,6 +178,8 @@ class SageX(object):
         @param filename  filename to lookup media info
         @return          json[MediaFile] or None
         '''
+        # encode into utf8 in case filename contains strange character
+        filename = filename.encode(DEFAULT_CHARSET)
         s1 = self.call('GetMediaFileForName', [filename], 'plex')
         if s1:
             val = s1.get('MediaFile') # None if key not found

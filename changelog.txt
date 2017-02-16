@@ -1,6 +1,10 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2017-02-15  Raymond Chi <raychi@gmail.com>
+
+  * Fix issue with synctool crash on unicode filenames.
+
 2017-02-05  Raymond Chi <raychi@gmail.com>
 
   * Updated to use X-Plex-Token
