@@ -25,7 +25,12 @@
 
 # PLEX reg key for non-localhost access: disableRemoteSecurity="1"
 
-import os, sys, logging, argparse, signal, pprint
+import os
+import sys
+import logging
+import argparse
+import signal
+import pprint
 
 import sageplex.plexlog  # log wrapper for scanner/agent
 import sageplex.config   # read configuration files
@@ -33,13 +38,11 @@ import sageplex.sagex    # SageTV API calls
 import sageplex.plexapi  # PLEX API calls
 import sageplex.spvideo  # parsing sage/plex video obj
 
-import pdb
-
-PROG_DESC   = ('Compare or synchronize watch status and resume position '
-               'of the specified PLEX library sections with SageTV. '
-               'Individual PLEX Media files can be specified when the '
-               '-m option is used.')
-PROG_USAGE  = ('sageplex_sync.py [options] [id [id ...]]')
+PROG_DESC = ('Compare or synchronize watch status and resume position '
+             'of the specified PLEX library sections with SageTV. '
+             'Individual PLEX Media files can be specified when the '
+             '-m option is used.')
+PROG_USAGE = 'sageplex_sync.py [options] [id [id ...]]'
 
 LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
 
@@ -57,7 +60,7 @@ g_stat = None
 # catch control-c
 ######################################################################
 
-def signal_handler(signal, frame):
+def signal_handler(signal_num, frame):
     logging.error('SIGINT detected!')
     global g_exit
     g_exit = True
@@ -68,15 +71,16 @@ def signal_handler(signal, frame):
 ######################################################################
 
 def watchedToStr(watched):
-    '''Return watched status as string
+    """Return watched status as string
 
     @param watched  boolean
-    '''
+    """
     return 'watched' if watched else 'not watched'
 
 
 class Stat:
-    '''keeps track of statistics'''
+    """keeps track of statistics"""
+
     def __init__(self):
         self.processed = 0  # number of videos processed
         self.updated = 0    # number of videos updated
@@ -100,52 +104,53 @@ class Stat:
             s += ', %d updated' % self.updated
         return s
 
-    def addPlex(self, id, title, p_resume, s_resume, p_watch, s_watch):
-        '''add an out of sync plex title to list
+    def addPlex(self, m_id, title, p_resume, s_resume, p_watch, s_watch):
+        """add an out of sync plex title to list
 
-        @param id        plex media-id of video
+        @param m_id      plex media-id of video
         @param title     name of video
         @param p_resume  plex resume position
         @param s_resume  sage resume position
         @param p_watch   plex watched status
         @param s_watch   sage watched status
-        '''
+        """
         s = ('[%s] %s (%s [%s] vs %s [%s])' %
-             (id, title,
+             (m_id, title,
               p_resume, watchedToStr(p_watch),
               s_resume, watchedToStr(s_watch)))
         self.plex.append(s)
 
-    def addSage(self, id, title, s_resume, p_resume, s_watch, p_watch):
-        '''add an out of sync sage title to list
+    def addSage(self, m_id, title, s_resume, p_resume, s_watch, p_watch):
+        """add an out of sync sage title to list
 
-        @param id        plex media-id of video
+        @param m_id      plex media-id of video
         @param title     name of video
         @param s_resume  sage resume position
         @param p_resume  plex resume position
         @param s_watch   sage watched status
         @param p_watch   plex watched status
-        '''
+        """
         s = ('[%s] %s (%s [%s] vs %s [%s])' %
-             (id, title,
+             (m_id, title,
               s_resume, watchedToStr(s_watch),
               p_resume, watchedToStr(p_watch)))
         self.sage.append(s)
 
-    def addNoSage(self, id, title, p_resume, p_watch):
-        '''add an not in sage title to list
+    def addNoSage(self, m_id, title, p_resume, p_watch):
+        """add an not in sage title to list
 
-        @param id        plex media-id of video
+        @param m_id      plex media-id of video
         @param title     name of video
         @param p_resume  plex resume position
         @param p_watch   plex watched status
-        '''
+        """
         s = ('[%s] %s (%s [%s])' %
-             (id, title, p_resume, watchedToStr(p_watch)))
+             (m_id, title, p_resume, watchedToStr(p_watch)))
         self.nosage.append(s)
 
-    def printSummary(self):
-        '''Print accumulated statistics'''
+    @staticmethod
+    def printSummary():
+        """Print accumulated statistics"""
         # print summary and statistics
         if g_stat.plex:
             print '\nPLEX out of sync:'
@@ -167,10 +172,10 @@ class Stat:
 ######################################################################
 
 def mainList(args):
-    '''List PLEX library sections
+    """List PLEX library sections
 
     @param args  namespace from ArgumentParser.parse_args
-    '''
+    """
     sections = plexapi.listSections()
     if not sections:
         print 'Failed to retrieve sections!'
@@ -190,10 +195,10 @@ def mainList(args):
 ######################################################################
 
 def syncMediaId(args):
-    '''Sync/info particular media-id
+    """Sync/info particular media-id
 
     @param args  namespace from ArgumentParser.parse_args
-    '''
+    """
     for x in args.id:
         if not x.isdigit():
             print 'Must be a PLEX Media-ID number: %s' % x
@@ -207,10 +212,10 @@ def syncMediaId(args):
 
 
 def syncSections(args):
-    '''Sync/info list of sections
+    """Sync/info list of sections
 
     @param args  namespace from ArgumentParser.parse_args
-    '''
+    """
     sections = None
     slist = []
     path = '/library/sections'
@@ -256,12 +261,12 @@ def syncSections(args):
 
 
 def processVideo(node, log):
-    '''Process the video node and synchronize the resume position and
+    """Process the video node and synchronize the resume position and
     watched status.
 
     @param node   xml <Video> node
     @param log    the log object
-    '''
+    """
     # check if we need to exit (ctrl-c)
     if g_exit:
         mylog.error('Got SIGINT, exiting!!')
@@ -326,7 +331,7 @@ def processVideo(node, log):
     watched_sync = sv.getWatched() == pv.getWatched()
 
     # 2. check whether resume position is in sync or not.
-    if (pn_resume == sn_resume or abs(pn_resume - sn_resume) < 2000):
+    if pn_resume == sn_resume or abs(pn_resume - sn_resume) < 2000:
         # The 2 second difference is needed because setting the resume
         # position in Sage does not yield exact ms result as PLEX pos.
         reason = '[OK]'
@@ -347,7 +352,7 @@ def processVideo(node, log):
         print reason
         if g_args.media:
             # print detailed timing info
-            print '\t  Sage: %s' % sv.getInfo(g_args.media) # detail if individual media
+            print '\t  Sage: %s' % sv.getInfo(g_args.media)  # detail if individual media
             print '\t  PLEX: %s' % pv.getInfo()
         return
 
@@ -368,25 +373,25 @@ def processVideo(node, log):
             updatePlex(pv, sv, syncPos=True)
     elif not watched_sync:
         if sv.getWatched():  # Sage true PLEX must be false
-            assert(not pv.getWatched())
+            assert not pv.getWatched()
             updatePlex(pv, sv, syncStatus=True)
         elif pv.getWatched():  # PLEX true sage must be false
-            assert(not sv.getWatched())
+            assert not sv.getWatched()
             updateSage(sv, pv, airing, syncStatus=True)
         else:
-            assert(False)
+            assert False
     else:
-        assert(False)
+        assert False
 
 
 def updatePlex(pv, sv, syncStatus=False, syncPos=False):
-    '''Update PLEX metadata from Sage
+    """Update PLEX metadata from Sage
 
     @param pv          PlexVideo object
     @param sv          SageVideo object
     @param syncStatus  are we updating watch status?
     @param syncPos     are we updating pos?
-    '''
+    """
     if not syncStatus and not syncPos:
         return
 
@@ -395,7 +400,7 @@ def updatePlex(pv, sv, syncStatus=False, syncPos=False):
                    pv.getWatched(), sv.getWatched())
     print '[PLEX out of sync]'
     print '\t  PLEX: %s' % pv.getInfo()
-    print '\t  Sage: %s' % sv.getInfo(g_args.media) # detail if individual media
+    print '\t  Sage: %s' % sv.getInfo(g_args.media)  # detail if individual media
     # if info mode, done
     if not g_args.sync:
         return
@@ -416,7 +421,7 @@ def updatePlex(pv, sv, syncStatus=False, syncPos=False):
         if not g_args.simulate:
             plexapi.setProgress(pv.id, sv.resume)
     else:
-        assert(False)
+        assert False
 
     # output done message
     if not g_args.simulate:
@@ -427,14 +432,14 @@ def updatePlex(pv, sv, syncStatus=False, syncPos=False):
 
 
 def updateSage(sv, pv, airing, syncStatus=False, syncPos=False):
-    '''Update Sage metadata from PLEX
+    """Update Sage metadata from PLEX
 
     @param sv          SageVideo object
     @param pv          PlexVideo object
     @param airing      mf airing object
     @param syncStatus  are we updating watch status?
     @param syncPos     are we updating pos?
-    '''
+    """
     if not syncStatus and not syncPos:
         return
 
@@ -442,7 +447,7 @@ def updateSage(sv, pv, airing, syncStatus=False, syncPos=False):
                    sv.getResumeStr(None), pv.getResumeStr(None),
                    sv.getWatched(), pv.getWatched())
     print '[Sage out of sync]'
-    print '\t  Sage: %s' % sv.getInfo(g_args.media) # detail if individual media
+    print '\t  Sage: %s' % sv.getInfo(g_args.media)  # detail if individual media
     print '\t  PLEX: %s' % pv.getInfo()
     # if info mode, done
     if not g_args.sync:
@@ -477,11 +482,11 @@ def updateSage(sv, pv, airing, syncStatus=False, syncPos=False):
                 # watched flag. this is because we are copying a plex
                 # pos 0 to sage, which must mean this is a plex
                 # watched show. damn this is complicated! :)
-                assert(pv.getWatched())
+                assert pv.getWatched()
                 print '[watched]',
                 sageapi.setWatched(airing.get('AiringID'))
     else:
-        assert(False)
+        assert False
 
     # output done message
     if not g_args.simulate:
@@ -492,14 +497,14 @@ def updateSage(sv, pv, airing, syncStatus=False, syncPos=False):
 
 
 def askUser(msg, prompt, default='n', silentDefault='y', silent=False):
-    '''Ask the user a question
+    """Ask the user a question
 
     @msg            message/text to display to the user
     @prompt         text for prompt
     @default        if user did not supply an answer
     @silentDefault  default if running in silent mode
     @silent         are we in silent mode
-    '''
+    """
     if silent:
         default = silentDefault
     prompt += ' (y/n [%s]) ' % default
@@ -513,17 +518,17 @@ def askUser(msg, prompt, default='n', silentDefault='y', silent=False):
     else:
         answer = default
 
-    if (answer.lower() != 'y'):
+    if answer.lower() != 'y':
         return False
     else:
         return True
 
 
 def mainSync(args):
-    '''Sync/Display the PLEX library sections
+    """Sync/Display the PLEX library sections
 
     @param args  namespace from ArgumentParser.parse_args
-    '''
+    """
     # this should not happen
     if not args.id:
         return
@@ -552,7 +557,7 @@ def mainSync(args):
 ######################################################################
 
 def mainAdd(args):
-    '''Add a PLEX library section'''
+    """Add a PLEX library section"""
     if args.addtv:
         ans = plexapi.createSection(args.addtv[0], args.addtv[1:])
     elif args.addmovie:
@@ -576,7 +581,7 @@ def mainAdd(args):
 ######################################################################
 
 def mainDelete(args):
-    '''Delete a PLEX library section'''
+    """Delete a PLEX library section"""
     # get the section name
     sections = plexapi.listSections()
     if not sections:
@@ -604,7 +609,7 @@ def mainDelete(args):
 ######################################################################
 
 def mainRefresh(args):
-    '''Refresh a PLEX library section'''
+    """Refresh a PLEX library section"""
     # get the section name
     sections = plexapi.listSections()
     if not sections:
@@ -624,23 +629,23 @@ def mainRefresh(args):
 ######################################################################
 
 def parseArgs():
-    '''Parse command line arguments
+    """Parse command line arguments
 
     @return  namespace from ArgumentParser.parse_args
-    '''
+    """
     # add the parent parser
-    parser = argparse.ArgumentParser(epilog = PROG_DESC,
-                                     usage = PROG_USAGE,
-                                     formatter_class = argparse.ArgumentDefaultsHelpFormatter)
+    parser = argparse.ArgumentParser(epilog=PROG_DESC,
+                                     usage=PROG_USAGE,
+                                     formatter_class=argparse.ArgumentDefaultsHelpFormatter)
 
     # list or sync can't be both used
     group = parser.add_mutually_exclusive_group()
     group.add_argument('-l', '--list',
-                        help='list PLEX library sections',
-                        action='store_true')
+                       help='list PLEX library sections',
+                       action='store_true')
     group.add_argument('-s', '--sync',
-                        help='sync watch status',
-                        action='store_true')
+                       help='sync watch status',
+                       action='store_true')
     # rest of parameters
     parser.add_argument('-m', '--media',
                         help='ID is media-id, not section-id',
@@ -708,7 +713,7 @@ def parseArgs():
             if not x.isdigit():
                 print 'Invalid resume position: non digit: %s' % args.position
                 return
-            s += int(x) * (60**i)
+            s += int(x) * (60 ** i)
             i += 1
         args.positionSec = s * 1000  # in ms
 
@@ -728,19 +733,19 @@ def parseArgs():
 
     # any work to do?
     if (args.list or args.id or
-        args.addtv or args.addmovie or
-        args.delsec or args.refresh):
+            args.addtv or args.addmovie or
+            args.delsec or args.refresh):
         return args
     else:
         parser.print_help()
 
 
 def setupLogging():
-    '''Setup logging for sageplex_sync
+    """Setup logging for sageplex_sync
 
     log files are put in %temp%, and will rotate once reaching 5MB
     with up to 5 backup files.
-    '''
+    """
     global mylog
 
     # put logs in temp
@@ -751,12 +756,12 @@ def setupLogging():
 
     # log wrapper
     mylog = sageplex.plexlog.PlexLog()
-    mylog.updateLoggingConfig(logloc, LOG_FORMAT, True) # rotate handler
+    mylog.updateLoggingConfig(logloc, LOG_FORMAT, True)  # rotate handler
     mylog.info('***** Entering SagePlex Sync %s *****', sys.argv[1:])
 
 
 def main():
-    '''Main entrypoint'''
+    """Main entrypoint"""
     global mycfg, sageapi, plexapi
     global g_args, g_stat
 
@@ -774,10 +779,14 @@ def main():
 
     # check cfg file is read correctly
     if not mycfg.getPlexHost():
-        print 'PLEX host is not defined!\nCheck sageplex_cfg.json to ensure it is valid.\nCheck sageplex_sync.log for additional details.'
+        print('PLEX host is not defined!\n'
+              'Check sageplex_cfg.json to ensure it is valid.\n'
+              'Check sageplex_sync.log for additional details.')
         return
     if not mycfg.getSagexHost():
-        print 'SageX host is not defined!\nCheck sageplex_cfg.json to ensure it is valid.\nCheck sageplex_sync.log for additional details.'
+        print('SageX host is not defined!\n'
+              'Check sageplex_cfg.json to ensure it is valid.\n'
+              'Check sageplex_sync.log for additional details.')
         return
 
     sageapi = sageplex.sagex.SageX(mycfg.getSagexHost())
