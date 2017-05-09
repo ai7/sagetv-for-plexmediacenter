@@ -4,3 +4,4 @@
 *.pyc
 *.log
 /build/
+src/.idea/workspace.xml

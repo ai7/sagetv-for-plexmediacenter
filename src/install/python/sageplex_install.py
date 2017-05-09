@@ -7,30 +7,40 @@
 # uninstall: python sageplex_install.py -u
 #
 
-import os, sys, argparse, logging, shutil, subprocess, json
+import os
+import sys
+import argparse
+import logging
+import shutil
+import subprocess
+import json
+import getpass
+import httplib
+import urllib
 
-PROG_DESC   = ('Install/Uninstall/Configure SageTV for PLEX Media Server.')
+PROG_VERSION = '8.3.1'
+PROG_DESC = 'Install/Uninstall/Configure SageTV for PLEX Media Server.'
 LOG_FORMAT = '%(asctime)s| %(levelname)-8s| %(message)s'
 
 # default PMS data location
-PLEX_LOC_WIN = [ r'%LOCALAPPDATA%\Plex Media Server',
-                 r'%USERPROFILE%\Local Settings\Application Data\Plex Media Server' ]
-PLEX_LOC_MAC = [ '~/Library/Application Support/Plex Media Server' ]
-PLEX_LOC_LIN = [ '~plex/Library/Application Support/Plex Media Server',
-                 '/config/Library/Application Support/Plex Media Server' ]
+PLEX_LOC_WIN = [r'%LOCALAPPDATA%\Plex Media Server',
+                r'%USERPROFILE%\Local Settings\Application Data\Plex Media Server']
+PLEX_LOC_MAC = ['~/Library/Application Support/Plex Media Server']
+PLEX_LOC_LIN = ['~plex/Library/Application Support/Plex Media Server',
+                '/config/Library/Application Support/Plex Media Server']
 
 # PLEX registry setting for data location
-PLEX_REG_WIN = [[ r'HKEY_CURRENT_USER',
-                  r'Software\Plex, Inc.\Plex Media Server',
-                  r'LocalAppDataPath' ]]
+PLEX_REG_WIN = [[r'HKEY_CURRENT_USER',
+                 r'Software\Plex, Inc.\Plex Media Server',
+                 r'LocalAppDataPath']]
 
 # SageTV registry location to get install path
-SAGE_REG_WIN = [[ r'HKEY_LOCAL_MACHINE',
-                  r'SOFTWARE\Frey Technologies',
-                  r'LastInstallDir' ]]
+SAGE_REG_WIN = [[r'HKEY_LOCAL_MACHINE',
+                 r'SOFTWARE\Frey Technologies',
+                 r'LastInstallDir']]
 
 CFG_FILE = 'sageplex_cfg.json'
-CFG_ENV  = 'SAGEPLEX_CFG'
+CFG_ENV = 'SAGEPLEX_CFG'
 
 g_root = ''  # script location
 g_step = 1   # UI step count
@@ -45,13 +55,13 @@ isLin = False
 ######################################################################
 
 def getRegValue(root, key, value):
-    '''Read a registry setting
+    """Read a registry setting
 
     @param root   root, such as HKEY_LOCAL_MACHINE
     @param key    registry path
     @param value  key to retrieve value for
     @return       registry value or None
-    '''
+    """
     logging.info('Querying REGKEY: %s\\%s', key, value)
 
     # convert from str to int if necessary
@@ -61,7 +71,7 @@ def getRegValue(root, key, value):
         elif root == 'HKEY_CURRENT_USER':
             root = wreg.HKEY_CURRENT_USER
         else:
-            log.error('getRegValue: unsupported root: %s', root)
+            logging.error('getRegValue: unsupported root: %s', root)
             return
 
     try:
@@ -76,14 +86,14 @@ def getRegValue(root, key, value):
 
 
 def copyFile(src, dst, isTree=False, nukeDst=False):
-    '''Copies individual files or directory tree
+    """Copies individual files or directory tree
 
     @param src      source file/folder
     @param dst      destination file/folder
     @param isTree   is source a folder
     @param nukeDst  nuke destination before copy
     @return         True on success
-    '''
+    """
     # if current directory is not the same as where the script is
     # located, then we need to prefix the source with the path to the
     # script. Otherwise we don't prefix so the path are shorter and
@@ -107,12 +117,12 @@ def copyFile(src, dst, isTree=False, nukeDst=False):
 
 
 def deleteFile(f, isTree=False):
-    '''Delete file or directory tree
+    """Delete file or directory tree
 
     @param f       file/folder to delete
     @param isTree  is input a folder tree
     @return        True on success.
-    '''
+    """
     logging.info('Deleting %s', f)
 
     if not os.path.exists(f):
@@ -132,27 +142,27 @@ def deleteFile(f, isTree=False):
 
 
 def runCommand(cmd, shell=False):
-    '''execute a command and return the output
+    """execute a command and return the output
 
     @param cmd    command to execute, an array
     @param shell  invoke via shell
     @return       the output of the command or None
-    '''
+    """
     try:
         logging.info('calling %s', cmd)
         output = subprocess.check_output(cmd, shell=shell)
         return output.strip()
-    except (subprocess.CalledProcessError), e:
+    except subprocess.CalledProcessError as e:
         logging.error("call failed: %s", e)
 
 
 def setGlobalEnvWin(key, value):
-    '''Set a global environment variable on Windows'''
+    """Set a global environment variable on Windows"""
     if not key:
         return
 
     if not value:
-        value = '' # this will clear value
+        value = ''  # this will clear value
 
     s = 'setx %s "%s"' % (key, value)
     output = runCommand(s)
@@ -166,7 +176,7 @@ def setGlobalEnvWin(key, value):
 ######################################################################
 
 def askUser(msg, prompt, default='n', silentDefault='y', silent=False):
-    '''Ask the user a question
+    """Ask the user a question
 
     @msg            message/text to display to the user
     @prompt         text for prompt
@@ -174,7 +184,7 @@ def askUser(msg, prompt, default='n', silentDefault='y', silent=False):
     @silentDefault  default if running in silent mode
     @silent         are we in silent mode
     @return         whether user answered y or not
-    '''
+    """
     if silent:
         default = silentDefault
     prompt += ' (y/n [%s]) ' % default
@@ -188,19 +198,19 @@ def askUser(msg, prompt, default='n', silentDefault='y', silent=False):
     else:
         answer = default
 
-    if (answer.lower() != 'y'):
+    if answer.lower() != 'y':
         return False
     else:
         return True
 
 
 def askSettings(msg, default):
-    '''Get a setting from the user
+    """Get a setting from the user
 
     @param msg      message
     @param default  default value if user press enter
     @return         user reply or None
-    '''
+    """
     prompt = '%s [%s]: ' % (msg, default)
     answer = raw_input(prompt).strip()
     return answer
@@ -211,27 +221,28 @@ def askSettings(msg, default):
 ######################################################################
 
 def validateSageDir(sageDir, log=True):
-    '''Validate SageTV directory
+    """Validate SageTV directory
 
     @param sageDir  dir where SageTV.exe is located
+    @param log      whether to log messages
     @return         True if dir appears valid
-    '''
+    """
     sageExe = os.path.join(sageDir, r'SageTV.exe')
     if not os.path.isfile(sageExe):
         if log:
-            logging.error('SageTV.exe not found: %s', sageExe);
+            logging.error('SageTV.exe not found: %s', sageExe)
         return
     if log:
-        logging.info('Found: %s', sageExe);
+        logging.info('Found: %s', sageExe)
 
     return True
 
 
 def detectSageWin():
-    '''Detect SageTV install location
+    """Detect SageTV install location
 
     @return  SageTV.exe location, or None
-    '''
+    """
     print 'Detecting SageTV ...',
     sys.stdout.flush()
 
@@ -242,39 +253,40 @@ def detectSageWin():
         val = getRegValue(p[0], p[1], p[2])
         if val:
             print '[%s]' % val
-            break;
+            break
     if not val:
         print '[Not Found]'
         return
 
     # do some sanity test
     if not os.path.isdir(val):
-        logging.error('SageTV dir does not exist: %s', val);
+        logging.error('SageTV dir does not exist: %s', val)
         print 'SageTV dir does not exist:', val
         return
 
     # we need to append 'SageTV' to path stored in registry
     sagePath = os.path.join(val, 'SageTV')
     if not validateSageDir(sagePath):
-        print 'SageTV.exe not found:', sageExe
+        print 'SageTV.exe not found:', sagePath
         return
 
     return sagePath
 
 
 def detectSage():
-    '''Detect SageTV install location'''
+    """Detect SageTV install location"""
     if isWin:
         return detectSageWin()
     # no mac/lin version
 
 
 def validatePlexDir(plexDir, log=True):
-    '''Validate PLEX Data directory
+    """Validate PLEX Data directory
 
     @param plexDir  PLEX data directory
+    @param log      whether to log messages
     @return         True if dir appears valid
-    '''
+    """
     if not os.path.isdir(os.path.join(plexDir, 'Plug-ins')):
         if log:
             logging.error('Data folder missing Plug-ins: %s', plexDir)
@@ -284,11 +296,11 @@ def validatePlexDir(plexDir, log=True):
 
 
 def detectPlexLoc(pList):
-    '''Detect PLEX Data location for win/mac/lin
+    """Detect PLEX Data location for win/mac/lin
 
     @param pList  list of locations to check, expanded
     @return       PLEX data location
-    '''
+    """
     logging.info('Detecting PLEX Data folder ...')
     ploc = None
     for p in pList:
@@ -308,11 +320,11 @@ def detectPlexLoc(pList):
 
 
 def detectPlexLocReg(pList):
-    '''Detect PLEX Data location using windows registry
+    """Detect PLEX Data location using windows registry
 
     @param pList  list of registry location to check
     @return       PLEX data location
-    '''
+    """
     logging.info('Detecting PLEX Data folder via registry ...')
 
     ploc = None
@@ -341,7 +353,7 @@ def detectPlexLocReg(pList):
 
 
 def expandVarsUser(x):
-    '''expand both $ and ~ in string'''
+    """expand both $ and ~ in string"""
     if '~' in x:
         return os.path.expanduser(x)
     else:
@@ -349,7 +361,7 @@ def expandVarsUser(x):
 
 
 def detectPlex():
-    '''Detect PLEX install location'''
+    """Detect PLEX install location"""
 
     print 'Detecting PLEX ...',
     sys.stdout.flush()
@@ -365,7 +377,7 @@ def detectPlex():
     elif isLin:
         ploc = detectPlexLoc(expandVarsUser(x) for x in PLEX_LOC_LIN)
     else:
-        assert(0)
+        assert False
 
     if ploc:
         print '[%s]' % ploc
@@ -380,11 +392,11 @@ def detectPlex():
 ######################################################################
 
 def copySageFiles(sagePath):
-    '''Copy sagetv files
+    """Copy sagetv files
 
     @param sagePath  path to sagetv.exe
     @return          True on success
-    '''
+    """
     global g_step
 
     # copy sagetv\sagex\services\plex.js to
@@ -405,11 +417,11 @@ def copySageFiles(sagePath):
 
 
 def removeSageFiles(sagePath):
-    '''Remove sagetv files
+    """Remove sagetv files
 
     @param sagePath  path to sagetv.exe
     @return          True on success
-    '''
+    """
     global g_step
 
     # [sagepath]\sagex\services\plex.js
@@ -428,11 +440,11 @@ def removeSageFiles(sagePath):
 
 
 def copyPlexFiles(plexPath):
-    '''Copy PLEX files
+    """Copy PLEX files
 
     @param plexPath  path to PLEX data folder
     @return          True on success
-    '''
+    """
     global g_step
 
     # copy scanners
@@ -500,11 +512,11 @@ def copyPlexFiles(plexPath):
 
 
 def removePlexFiles(plexPath):
-    '''Remove PLEX files
+    """Remove PLEX files
 
     @param plexPath  path to PLEX data folder
     @return          True on success
-    '''
+    """
     global g_step
 
     # delete scanners
@@ -568,7 +580,7 @@ def removePlexFiles(plexPath):
 
 
 def setCfgEnv(plexPath, remove=False):
-    '''Set SAGEPLEX_CFG to point to sageplex_cfg.json file'''
+    """Set SAGEPLEX_CFG to point to sageplex_cfg.json file"""
 
     # if on windows, set set SAGEPLEX_CFG to point to the
     # configuration file we configured. This is necessary because we
@@ -593,10 +605,10 @@ def setCfgEnv(plexPath, remove=False):
 
 
 def runInstall(sagePath, plexPath):
-    '''Performs an install
+    """Performs an install
 
     @return  True on success
-    '''
+    """
     # we want to print intelligent message depending on whether
     # sage/plex is both found on the machine or not.
     if sagePath and plexPath:
@@ -606,7 +618,7 @@ def runInstall(sagePath, plexPath):
     elif plexPath:
         progs = 'PLEX Media Server'
     else:
-        assert(0)
+        assert False
 
     print ''
     if not askUser('This will install SageTV for PLEX Media Server on this system.\n'
@@ -647,11 +659,11 @@ def runInstall(sagePath, plexPath):
 ######################################################################
 
 def agentLogLoc(scanLog):
-    '''Figure out the agent log location based on the scanner log
+    """Figure out the agent log location based on the scanner log
 
-    @param scanlog  path to the scanner log
+    @param scanLog  path to the scanner log
     @return         BMT agent log location
-    '''
+    """
     logdir = os.path.dirname(scanLog)
     if isWin:
         bmtlog = r'PMS Plugin Logs\com.plexapp.agents.bmtagenttvshows.log'
@@ -661,7 +673,7 @@ def agentLogLoc(scanLog):
 
 
 def configCfgFile(cfg, plexPath):
-    '''Configures the sageplex_cfg.json file
+    """Configures the sageplex_cfg.json file
 
     Read the json file, prompt user for various settings, and write
     updated setting back to json file if changed.
@@ -669,7 +681,7 @@ def configCfgFile(cfg, plexPath):
     @param cfg:      path to sageplex_cfg.json
     @param plexPath  PLEX data directory
     @return          True on success
-    '''
+    """
     print ''
     data = None
     with open(cfg) as infile:
@@ -727,8 +739,15 @@ def configCfgFile(cfg, plexPath):
         plex['port'] = ans
         changed = True
 
-    ans = askSettings('  token', plex['token'])
+    # Now handle the plex token
+    cur_token = plex.get('token', '')
+    print '  token [%s]:' % cur_token  # print current token first
+    ans = requestPlexToken()  # ask user if they want to request new token
+    if not ans:
+        # no new token requested, back to old behavior
+        ans = askSettings('  token', cur_token)
     if ans:
+        # have new token, either from http request or user prompt
         logging.info('plex[token]: %s', ans)
         plex['token'] = ans
         changed = True
@@ -767,8 +786,8 @@ def configCfgFile(cfg, plexPath):
 
 
 def runConfig(plexPath):
-    '''Performs configuration of sageplex_cfg.json
-    '''
+    """Performs configuration of sageplex_cfg.json
+    """
     logging.info('Performing Configure actions')
 
     cfgPath = os.path.join(plexPath, CFG_FILE)
@@ -785,11 +804,11 @@ def runConfig(plexPath):
 ######################################################################
 
 def runUninstall(sagePath, plexPath):
-    '''Performs an uninstall
+    """Performs an uninstall
 
     @param sagePath  SageTV path or None
     @param plexPath  PLEX data location or None
-    '''
+    """
     # we want to print intelligent message depending on whether
     # sage/plex is both found on the machine or not.
     if sagePath and plexPath:
@@ -799,7 +818,7 @@ def runUninstall(sagePath, plexPath):
     elif plexPath:
         progs = 'PLEX Media Server'
     else:
-        assert(0)
+        assert False
 
     if not askUser('\nThis will UNINSTALL SageTV for PLEX Media Server on this system.\n'
                    '%s should be stopped before you continue.\n' % progs,
@@ -835,16 +854,101 @@ def runUninstall(sagePath, plexPath):
 
 
 ######################################################################
+# PLEX tokens
+######################################################################
+
+class PlexTokens(object):
+    """
+    Class that deals with PLEX tokens
+    """
+    def __init__(self):
+        self._user = ''
+        self._pwd = ''
+        self._version = PROG_VERSION
+        self._id = 'sagetv-for-plexmediacenter'
+        self._product = 'SageTV for Plex Media Center Plugin'
+
+    def get_plex_credentials(self, retry_times=3):
+        """
+        Get the PLEX user/password
+
+        @param retry_times: retry if no data provided
+        """
+        ask = 0
+        while ask < retry_times:
+            ask += 1
+            answer = raw_input('  PLEX username: ').strip()
+            if answer:
+                self._user = answer
+                break
+        if not self._user:
+            return
+        ask = 0
+        while ask < retry_times:
+            ask += 1
+            answer = getpass.getpass('  PLEX password: ')
+            if answer:
+                self._pwd = answer
+                break
+
+    def request_token(self):
+        """
+        Request a PLEX authentication token, see
+        https://forums.plex.tv/discussion/129922/how-to-request-a-x-plex-token-token-for-your-app
+        """
+        if not (self._user and self._pwd):
+            print('PLEX username/password not specified.')
+            return
+
+        # construct http header
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'charset': 'utf-8',
+            'X-Plex-Client-Identifier': self._id,
+            'X-Plex-Product': self._product,
+            'X-Plex-Version': self._version}
+        # send credential as form values in the body
+        params = urllib.urlencode({
+            'user[login]': self._user,
+            'user[password]': self._pwd
+        })
+
+        # now send the command
+        print('Requesting PLEX authentication token ...')
+        conn = httplib.HTTPSConnection("plex.tv")
+        conn.request("POST", "/users/sign_in.json", params, headers)
+
+        # get response
+        response = conn.getresponse()
+        data = json.loads(response.read())
+        conn.close()
+
+        logging.info('Response: %d, %s', response.status, response.reason)
+
+        if response.status == httplib.CREATED:
+            print '  %d: %s' % (response.status, response.reason)
+            return data['user']['authToken']
+        elif response.status < 400:
+            # did not get response we expect, dump result
+            print('  %d: %s: %s:\n%s' % (
+                response.status, response.reason, 'Unexpected response',
+                json.dumps(data, indent=2)
+            ))
+        else:
+            print '  %d: %s: %s' % (response.status, response.reason, data['error'])
+
+
+######################################################################
 # main functions
 ######################################################################
 
 def parseArgs():
-    '''Parse command line arguments
+    """Parse command line arguments
 
     @return  namespace from ArgumentParser.parse_args
-    '''
+    """
     # add the parent parser
-    parser = argparse.ArgumentParser(epilog = PROG_DESC)
+    parser = argparse.ArgumentParser(epilog=PROG_DESC)
 
     group = parser.add_mutually_exclusive_group()
 
@@ -859,6 +963,10 @@ def parseArgs():
 
     group.add_argument('-c', '--config',
                        help='Configure sageplex_cfg.json file',
+                       action='store_true')
+
+    group.add_argument('-t', '--token',
+                       help='Request PLEX authorization token',
                        action='store_true')
 
     parser.add_argument('--sagedir',
@@ -883,14 +991,16 @@ def parseArgs():
             return
 
     # any work to do?
-    if (args.install or args.uninstall or args.config):
+    if args.install or args.uninstall or args.config or args.token:
         return args
     else:
         parser.print_help()
 
-def setupLogging():
-    '''Setup logging for the installer'''
 
+def setupLogging():
+    """Setup logging for the installer"""
+
+    tmploc = ''
     if isWin:
         # on windows put log in %temp%
         tmploc = os.path.expandvars('$TEMP')
@@ -909,11 +1019,11 @@ def setupLogging():
 
 
 def checkSourceFolders(rloc):
-    '''Make sure we have plex/SageTV subfolders to copy files from
+    """Make sure we have plex/SageTV subfolders to copy files from
 
     @param rloc  root folder of the zip content
     @return      True if expected folders exist
-    '''
+    """
     dir1 = os.path.join(rloc, 'sagetv')
     dir2 = os.path.join(rloc, 'plex')
 
@@ -934,14 +1044,14 @@ def checkSourceFolders(rloc):
 
 
 def getRootFolder():
-    '''Return the root of the zip content
-    '''
+    """Return the root of the zip content
+    """
     # first get script location
     loc = os.path.dirname(os.path.realpath(sys.argv[0]))
 
     # script loc could be x levels from root, go up until we see install.txt
     found = False
-    for i in range(2): # look 2 levels up
+    for i in range(2):  # look 2 levels up
         loc = os.path.join(loc, '..')
         f = os.path.join(loc, 'install.txt')
         if os.path.isfile(f):
@@ -958,8 +1068,28 @@ def getRootFolder():
     return loc
 
 
+def requestPlexToken(retry=3):
+    """
+    Request a PLEX authorization token
+
+    @param retry: total number of times to try
+    @return: token, if any
+    """
+    if not askUser(None, "Request PLEX authentication token?"):
+        return
+    pt = PlexTokens()
+    ask = 0
+    while ask < retry:
+        pt.get_plex_credentials()
+        token = pt.request_token()
+        if token:
+            print 'PLEX auth token: ' + token
+            return token
+        ask += 1
+
+
 def main():
-    '''Main entry point function'''
+    """Main entry point function"""
     global g_root
 
     # parse arguments
@@ -979,6 +1109,10 @@ def main():
 
     # parameter is OK, initialize logs
     setupLogging()
+
+    if args.token:
+        requestPlexToken()
+        return
 
     # figure out where the root location is
     rloc = getRootFolder()

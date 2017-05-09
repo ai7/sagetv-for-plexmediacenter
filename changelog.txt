@@ -1,6 +1,10 @@
                       sagetv-for-plexmediacenter
                               ChangeLog
 
+2017-05-09  Raymond Chi <raychi@gmail.com>
+
+  * Updated installer to request permament PLEX token.
+
 2017-02-15  Raymond Chi <raychi@gmail.com>
 
   * Fix issue with synctool crash on unicode filenames.
